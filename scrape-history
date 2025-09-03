@@ -479,11 +479,18 @@ class ContentCache:
         
         conn.close()
         
+        # Calculate cache size in MB
+        cache_size_mb = 0.0
+        if self.db_path.exists():
+            cache_size_bytes = self.db_path.stat().st_size
+            cache_size_mb = cache_size_bytes / (1024 * 1024)  # Convert to MB
+        
         return {
             'total_entries': total_entries,
             'successful_entries': successful_entries,
             'oldest_entry': min_date,
-            'newest_entry': max_date
+            'newest_entry': max_date,
+            'cache_size_mb': cache_size_mb
         }
     
     def clean_old_entries(self, days: int = 30):
