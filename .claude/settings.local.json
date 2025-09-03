@@ -36,7 +36,8 @@
       "Bash(echo \"Exit code: $?\")",
       "Bash(command -v:*)",
       "Bash(./scrape-history:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(time:*)"
     ],
     "deny": [],
     "ask": [],
