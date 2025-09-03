@@ -617,9 +617,9 @@ class AsyncWebScraper:
             if cached:
                 return cached
         
-        # Scrape fresh content
-        async with self.semaphore:
-            try:
+        # Scrape fresh content - only HTTP request inside semaphore
+        try:
+            async with self.semaphore:
                 response = await self.client.get(url)
                 response.raise_for_status()
                 
@@ -631,49 +631,50 @@ class AsyncWebScraper:
                 except (UnicodeDecodeError, LookupError):
                     # Fallback to utf-8 with replacement
                     text_content = content.decode('utf-8', errors='replace')
-                
-                # Parse with warnings suppressed
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    soup = BeautifulSoup(text_content, 'html.parser')
-                
-                # Remove script and style elements
-                for script in soup(["script", "style", "nav", "header", "footer", ".advertisement"]):
-                    script.decompose()
-                
-                # Extract text content
-                text = soup.get_text()
-                lines = (line.strip() for line in text.splitlines())
-                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-                text = ' '.join(chunk for chunk in chunks if chunk)
-                
-                title = soup.title.string if soup.title else ''
-                
-                # Cache the successful result
-                self.cache.cache_content(url, title, text, 'success')
-                
-                return {
-                    'url': url,
-                    'title': title,
-                    'content': text,
-                    'status': 'success',
-                    'from_cache': False
-                }
-                
-            except Exception as e:
-                error_msg = str(e)
-                
-                # Cache the error (with empty content)
-                self.cache.cache_content(url, '', '', 'error', error_msg)
-                
-                return {
-                    'url': url,
-                    'title': '',
-                    'content': '',
-                    'status': 'error',
-                    'error': error_msg,
-                    'from_cache': False
-                }
+            
+            # CPU-intensive work outside semaphore - allows more concurrent HTTP requests
+            # Parse with warnings suppressed
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                soup = BeautifulSoup(text_content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style", "nav", "header", "footer", ".advertisement"]):
+                script.decompose()
+            
+            # Extract text content
+            text = soup.get_text()
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            title = soup.title.string if soup.title else ''
+            
+            # Cache the successful result (I/O outside semaphore)
+            self.cache.cache_content(url, title, text, 'success')
+            
+            return {
+                'url': url,
+                'title': title,
+                'content': text,
+                'status': 'success',
+                'from_cache': False
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            
+            # Cache the error (with empty content)
+            self.cache.cache_content(url, '', '', 'error', error_msg)
+            
+            return {
+                'url': url,
+                'title': '',
+                'content': '',
+                'status': 'error',
+                'error': error_msg,
+                'from_cache': False
+            }
     
     async def close(self):
         await self.client.aclose()
