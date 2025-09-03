@@ -6,6 +6,8 @@
 #     "beautifulsoup4>=4.12.0", 
 #     "aiofiles>=23.0.0",
 #     "jinja2>=3.1.0",
+#     "tqdm>=4.65.0",
+#     "platformdirs>=4.0.0",
 # ]
 # ///
 """
@@ -34,19 +36,157 @@ from urllib.parse import urlparse
 from typing import List, Dict, Set, Optional
 import platform
 import os
+import logging
+import warnings
 
 import httpx
 from bs4 import BeautifulSoup
 import aiofiles
 from jinja2 import Template
+from tqdm import tqdm
+from platformdirs import user_cache_dir, user_data_dir
+
+# Suppress BeautifulSoup encoding warnings
+warnings.filterwarnings("ignore", message="Some characters could not be decoded")
+warnings.filterwarnings("ignore", message=".*REPLACEMENT CHARACTER.*")
+
+
+# Cross-platform utilities (inspired by browserexport)
+def determine_operating_system() -> str:
+    """Determine OS with WSL detection."""
+    # WSL detection
+    procfile = Path("/proc/version")
+    if procfile.exists():
+        proc_version = procfile.read_text()
+        if "microsoft" in proc_version.lower():
+            return "win32"
+    return platform.system().lower()
+
+
+def windows_appdata_paths(path: str) -> tuple[str, ...]:
+    """Expand Windows APPDATA paths."""
+    base_vars = ("%LOCALAPPDATA%", "%APPDATA%")
+    return tuple(
+        os.path.normpath(os.path.expandvars(os.path.join(var, path)))
+        for var in base_vars
+    )
+
+
+def expand_path(path_str: str) -> Path:
+    """Expand user path and make absolute."""
+    return Path(path_str).expanduser().absolute()
+
+
+def handle_path(pathmap: dict[str, str | tuple[str, ...]], browser_name: str = "Firefox") -> tuple[Path, ...]:
+    """Cross-platform path resolution."""
+    os_key = determine_operating_system()
+    
+    # Map different OS names
+    if os_key == "darwin":
+        os_key = "darwin"
+    elif os_key in ("linux", "linux2"):
+        os_key = "linux"
+    elif os_key in ("win32", "windows"):
+        os_key = "win32"
+    
+    paths = pathmap.get(os_key)
+    if not paths:
+        # Fallback to linux behavior
+        print(f"Warning: {browser_name} paths not defined for {os_key}, using Linux defaults")
+        paths = pathmap.get("linux", pathmap[list(pathmap.keys())[0]])
+    
+    # Normalize to tuple
+    if isinstance(paths, str):
+        paths = (paths,)
+    
+    return tuple(expand_path(p) for p in paths)
+
+
+def handle_glob(base_paths: tuple[Path, ...], pattern: str) -> Path:
+    """Find database using glob pattern with recursive fallback."""
+    from itertools import chain
+    
+    def try_glob(recursive: bool = False) -> list[Path]:
+        results = []
+        for base in base_paths:
+            if not base.exists():
+                continue
+            if recursive:
+                results.extend(base.rglob(pattern))
+            else:
+                results.extend(base.glob(pattern))
+        return results
+    
+    # Try non-recursive first
+    matches = try_glob(recursive=False)
+    if not matches:
+        # Try recursive as fallback
+        matches = try_glob(recursive=True)
+    
+    if len(matches) > 1:
+        paths_str = "\n".join(str(p) for p in matches)
+        raise ValueError(f"Multiple Firefox profiles found:\n{paths_str}\n\nUse --profile to specify one")
+    elif len(matches) == 1:
+        return matches[0]
+    else:
+        raise FileNotFoundError(f"No Firefox database found matching pattern '{pattern}' in {base_paths}")
+
+
+# Browser classes (simplified browserexport approach)
+class Browser:
+    """Base browser class."""
+    
+    @classmethod
+    def data_directories(cls) -> tuple[Path, ...]:
+        """Get browser data directories for current platform."""
+        raise NotImplementedError
+    
+    @classmethod
+    def locate_database(cls, profile: str = "*") -> Path:
+        """Locate database file using profile pattern."""
+        raise NotImplementedError
+
+
+class Firefox(Browser):
+    """Firefox browser implementation."""
+    
+    @classmethod
+    def data_directories(cls) -> tuple[Path, ...]:
+        """Get Firefox profile directories."""
+        return handle_path({
+            "linux": (
+                "~/.mozilla/firefox/",
+                "~/.var/app/org.mozilla.firefox/.mozilla/firefox/",  # Flatpak
+                "~/snap/firefox/common/.mozilla/firefox/",  # Snap
+            ),
+            "darwin": "~/Library/Application Support/Firefox/Profiles/",
+            "win32": windows_appdata_paths("Mozilla/Firefox/Profiles/"),
+        })
+    
+    @classmethod
+    def locate_database(cls, profile: str = "*") -> Path:
+        """Locate Firefox places.sqlite using profile pattern."""
+        dirs = cls.data_directories()
+        return handle_glob(dirs, f"{profile}/places.sqlite")
 
 
 class ContentCache:
-    """Persistent cache for scraped web content."""
+    """Persistent cache for scraped web content.
+    
+    Uses platformdirs for proper cross-platform cache directory management:
+    - macOS: ~/Library/Caches/scrape-history  
+    - Linux: ~/.cache/scrape-history
+    - Windows: %LOCALAPPDATA%\\scrape-history
+    """
     
     def __init__(self, cache_dir: Path = None):
-        self.cache_dir = cache_dir or Path.home() / ".scrape_history_cache"
-        self.cache_dir.mkdir(exist_ok=True)
+        if cache_dir:
+            self.cache_dir = cache_dir
+        else:
+            # Use platformdirs for proper cross-platform cache directory
+            self.cache_dir = Path(user_cache_dir("scrape-history", "kwbr"))
+        
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.cache_dir / "content_cache.db"
         self._init_db()
     
@@ -85,7 +225,7 @@ class ContentCache:
     def get_cached_content(self, url: str, max_age_hours: int = 24) -> Optional[Dict]:
         """Get cached content if it exists and is fresh enough."""
         url_hash = self._url_hash(url)
-        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        cutoff_time = (datetime.now() - timedelta(hours=max_age_hours)).isoformat()
         
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -191,13 +331,13 @@ class ContentCache:
     
     def clean_old_entries(self, days: int = 30):
         """Remove entries older than specified days."""
-        cutoff_time = datetime.now() - timedelta(days=days)
+        cutoff_time = (datetime.now() - timedelta(days=days)).isoformat()
         
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute("DELETE FROM cached_content WHERE scraped_at < ?", 
-                      (cutoff_time.isoformat(),))
+                      (cutoff_time,))
         deleted = cursor.rowcount
         conn.commit()
         conn.close()
@@ -206,41 +346,61 @@ class ContentCache:
 
 
 class FirefoxHistoryExtractor:
-    """Extract URLs from Firefox history database."""
+    """Extract URLs from Firefox history database using browserexport-style detection."""
     
-    def get_firefox_profile_path(self) -> Path:
-        """Find Firefox profile directory based on OS."""
-        system = platform.system()
-        
-        if system == "Windows":
-            base_path = Path.home() / "AppData" / "Roaming" / "Mozilla" / "Firefox" / "Profiles"
-        elif system == "Darwin":  # macOS
-            base_path = Path.home() / "Library" / "Application Support" / "Firefox" / "Profiles"
-        else:  # Linux
-            base_path = Path.home() / ".mozilla" / "firefox"
-        
-        if not base_path.exists():
-            raise FileNotFoundError(f"Firefox profile directory not found at {base_path}")
-        
-        # Find the default profile (usually ends with .default-release)
-        profiles = list(base_path.glob("*.default*"))
-        if not profiles:
-            raise FileNotFoundError("No Firefox profile found")
-        
-        return profiles[0] / "places.sqlite"
+    def __init__(self):
+        self.browser = Firefox()
     
-    def extract_urls(self, days: int, exclude_patterns: List[str]) -> List[Dict]:
-        """Extract URLs from Firefox history."""
-        db_path = self.get_firefox_profile_path()
-        
-        if not db_path.exists():
-            raise FileNotFoundError(f"Firefox database not found at {db_path}")
+    def list_profiles(self) -> List[Dict]:
+        """List available Firefox profiles with glob pattern examples."""
+        try:
+            dirs = self.browser.data_directories()
+            profiles = []
+            
+            for base_dir in dirs:
+                if not base_dir.exists():
+                    continue
+                
+                # Find all profile directories with places.sqlite
+                for profile_dir in base_dir.iterdir():
+                    if profile_dir.is_dir():
+                        places_db = profile_dir / "places.sqlite"
+                        if places_db.exists():
+                            profiles.append({
+                                'directory': profile_dir.name,
+                                'name': profile_dir.name,  # Use directory name as profile name
+                                'path': places_db,
+                                'is_default': 'default' in profile_dir.name.lower()
+                            })
+            
+            return sorted(profiles, key=lambda p: (not p['is_default'], p['directory']))
+            
+        except Exception as e:
+            raise FileNotFoundError(f"Failed to list Firefox profiles: {e}")
+    
+    def get_profile_path(self, profile_pattern: str = None) -> Path:
+        """Get database path using profile pattern (supports glob patterns)."""
+        pattern = profile_pattern or "*"
+        try:
+            return self.browser.locate_database(pattern)
+        except (ValueError, FileNotFoundError) as e:
+            # Provide helpful error with available profiles
+            try:
+                profiles = self.list_profiles()
+                available = [p['directory'] for p in profiles]
+                raise ValueError(f"{e}\nAvailable profiles: {available}")
+            except:
+                raise e
+    
+    def extract_urls(self, days: int, exclude_patterns: List[str], profile_pattern: str = None) -> List[Dict]:
+        """Extract URLs from Firefox history using profile pattern."""
+        db_path = self.get_profile_path(profile_pattern)
         
         # Calculate date threshold
         since_date = datetime.now() - timedelta(days=days)
         since_timestamp = int(since_date.timestamp() * 1_000_000)  # Firefox uses microseconds
         
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
         cursor = conn.cursor()
         
         query = """
@@ -299,7 +459,19 @@ class AsyncWebScraper:
                 response = await self.client.get(url)
                 response.raise_for_status()
                 
-                soup = BeautifulSoup(response.content, 'html.parser')
+                # Handle encoding more gracefully
+                content = response.content
+                try:
+                    # Try to decode with response encoding first
+                    text_content = content.decode(response.encoding or 'utf-8', errors='replace')
+                except (UnicodeDecodeError, LookupError):
+                    # Fallback to utf-8 with replacement
+                    text_content = content.decode('utf-8', errors='replace')
+                
+                # Parse with warnings suppressed
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    soup = BeautifulSoup(text_content, 'html.parser')
                 
                 # Remove script and style elements
                 for script in soup(["script", "style", "nav", "header", "footer", ".advertisement"]):
@@ -346,29 +518,43 @@ class AsyncWebScraper:
 class KeywordSearcher:
     """Search for keywords in scraped content."""
     
-    def search_content(self, content: str, keywords: List[str]) -> List[Dict]:
+    def search_content(self, content: str, keywords: List[str], max_context_length: int = 300, max_matches_per_keyword: int = 10) -> List[Dict]:
         """Find keyword matches with context."""
         matches = []
+        
+        # Limit content length for performance (keep first 50KB)
+        if len(content) > 50000:
+            content = content[:50000] + "... [content truncated for performance]"
         
         for keyword in keywords:
             # Support both exact and fuzzy matching
             pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+            keyword_matches = 0
             
             for match in pattern.finditer(content):
-                start = max(0, match.start() - 200)
-                end = min(len(content), match.end() + 200)
+                if keyword_matches >= max_matches_per_keyword:
+                    break
+                
+                # Smaller context window for better performance
+                context_window = min(200, max_context_length // 2)
+                start = max(0, match.start() - context_window)
+                end = min(len(content), match.end() + context_window)
                 context = content[start:end].strip()
                 
-                # Clean up context
+                # Clean up context and limit length
                 context = re.sub(r'\s+', ' ', context)
+                if len(context) > max_context_length:
+                    context = context[:max_context_length] + "..."
                 
                 matches.append({
                     'keyword': keyword,
                     'context': context,
                     'position': match.start()
                 })
+                keyword_matches += 1
         
-        return matches
+        # Limit total matches per URL for performance
+        return matches[:50]
 
 
 class HTMLReportGenerator:
@@ -411,31 +597,78 @@ class HTMLReportGenerator:
     </style>
     <script>
         function highlightKeywords() {
-            const keywords = {{ keywords | tojson }};
-            const results = document.querySelectorAll('.match');
-            
-            results.forEach(result => {
-                let html = result.innerHTML;
-                keywords.forEach(keyword => {
-                    const regex = new RegExp(`(${keyword})`, 'gi');
-                    html = html.replace(regex, '<span class="highlight">$1</span>');
+            try {
+                console.log('Starting keyword highlighting...');
+                const keywords = {{ keywords | tojson }};
+                const results = document.querySelectorAll('.match');
+                
+                console.log(`Found ${results.length} match elements to highlight`);
+                console.log('Keywords:', keywords);
+                
+                if (results.length > 50) {
+                    console.warn('Large number of results - highlighting may be slow');
+                }
+                
+                results.forEach((result, index) => {
+                    let html = result.innerHTML;
+                    keywords.forEach(keyword => {
+                        // Escape special regex characters
+                        const escapedKeyword = keyword.replace(/[.*+?^${}()|\\[\\]\\\\]/g, '\\$&');
+                        const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+                        html = html.replace(regex, '<span class="highlight">$1</span>');
+                    });
+                    result.innerHTML = html;
                 });
-                result.innerHTML = html;
-            });
+                
+                console.log('Keyword highlighting completed');
+            } catch (error) {
+                console.error('Error during keyword highlighting:', error);
+            }
         }
         
         function filterResults() {
             const searchTerm = document.getElementById('search').value.toLowerCase();
             const results = document.querySelectorAll('.result');
+            let visibleCount = 0;
             
             results.forEach(result => {
                 const text = result.textContent.toLowerCase();
-                result.style.display = text.includes(searchTerm) ? 'block' : 'none';
+                const isVisible = text.includes(searchTerm);
+                result.style.display = isVisible ? 'block' : 'none';
+                if (isVisible) visibleCount++;
             });
+            
+            // Update visible count
+            document.getElementById('visible-count').textContent = visibleCount;
+        }
+        
+        function toggleHighlighting() {
+            const checkbox = document.getElementById('enable-highlighting');
+            if (checkbox.checked) {
+                highlightKeywords();
+            } else {
+                // Remove highlighting
+                document.querySelectorAll('.highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
+            }
         }
         
         window.onload = function() {
-            highlightKeywords();
+            try {
+                console.log('Page loaded - initializing...');
+                console.log(`Total results found: ${document.querySelectorAll('.result').length}`);
+                
+                // Set up highlighting toggle
+                document.getElementById('enable-highlighting').addEventListener('change', toggleHighlighting);
+                
+                // Initial highlighting
+                highlightKeywords();
+                
+                console.log('Initialization complete');
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
         }
     </script>
 </head>
@@ -461,6 +694,25 @@ class HTMLReportGenerator:
     <div class="search-box">
         <input type="text" id="search" placeholder="Filter results..." onkeyup="filterResults()">
         <button onclick="filterResults()">Filter</button>
+        <label><input type="checkbox" id="enable-highlighting" checked> Enable keyword highlighting</label>
+    </div>
+    
+    <!-- Debug Information -->
+    <div class="debug-info" style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">
+        <strong>Debug Info:</strong><br>
+        Total results in template: {{ results|length }}<br>
+        Results with matches: {% set match_count = results|selectattr('matches')|list|length %}{{ match_count }}<br>
+        Keywords being searched: {{ keywords|join(', ') }}<br>
+        Template rendering time: {{ generation_time.strftime('%Y-%m-%d %H:%M:%S') }}
+    </div>
+    
+    <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
+        Displaying <span id="visible-count">{{ results|length }}</span> of {{ results|length }} results
+        {% if results_limited %}
+        <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">
+            ⚠️ Results limited to 100 for performance. Use --max-urls to reduce total URLs processed.
+        </div>
+        {% endif %}
     </div>
     
     {% for result in results %}
@@ -511,15 +763,44 @@ class HTMLReportGenerator:
     
     def generate_report(self, results: List[Dict], keywords: List[str], days: int = None, cache_stats: Dict = None) -> str:
         """Generate HTML report from search results."""
+        # Debug logging to identify the discrepancy
+        print(f"DEBUG: Generating report with {len(results)} total results")
+        
+        # Validate results and count different types
+        valid_results = []
+        empty_matches_count = 0
+        
+        for i, result in enumerate(results):
+            if 'matches' not in result:
+                print(f"DEBUG: Result {i} missing 'matches' field: {result.get('url', 'unknown')}")
+                continue
+            if not result['matches']:  # Empty list
+                print(f"DEBUG: Result {i} has empty matches: {result.get('url', 'unknown')}")
+                empty_matches_count += 1
+                continue
+            valid_results.append(result)
+        
+        print(f"DEBUG: {len(valid_results)} results with actual matches")
+        print(f"DEBUG: {empty_matches_count} results with empty matches")
+        
+        # Performance safeguard - limit results for browser rendering
+        max_results_for_html = 100
+        if len(results) > max_results_for_html:
+            print(f"WARNING: Limiting HTML report to first {max_results_for_html} results for performance")
+            print(f"         Use --max-urls to reduce the number of URLs processed")
+            results = results[:max_results_for_html]
+        
         template = Template(self.HTML_TEMPLATE)
         
-        successful_matches = sum(1 for r in results if r['matches'])
+        successful_matches = sum(1 for r in results if r.get('matches'))
         failed_scrapes = sum(1 for r in results if r['status'] == 'error')
         from_cache_count = sum(1 for r in results if r.get('from_cache', False))
         fresh_scrape_count = len(results) - from_cache_count
         
+        print(f"DEBUG: Template variables - total_urls: {len(results)}, successful_matches: {successful_matches}")
+        
         return template.render(
-            results=results,
+            results=results,  # Use all results for now to see what's happening
             keywords=keywords,
             days=days,
             total_urls=len(results),
@@ -528,124 +809,220 @@ class HTMLReportGenerator:
             from_cache_count=from_cache_count,
             fresh_scrape_count=fresh_scrape_count,
             cache_stats=cache_stats or {},
-            generation_time=datetime.now()
+            generation_time=datetime.now(),
+            results_limited=len(results) >= 100  # Add flag for results limitation
         )
 
 
 async def scrape_and_cache_urls(urls: List[Dict], cache: ContentCache, 
                               force_refresh: bool = False, max_cache_age_hours: int = 24) -> List[Dict]:
     """Scrape URLs using cache when possible."""
+    if not urls:
+        return []
+        
     scraper = AsyncWebScraper(cache)
     results = []
     
-    for i, url_data in enumerate(urls, 1):
-        url = url_data['url']
-        print(f"Processing {i}/{len(urls)}: {url[:80]}...")
-        
-        # Check cache age override
-        use_cache = not force_refresh
-        scraped = await scraper.scrape_url(url, use_cache, max_cache_age_hours)
-        
-        cache_status = "💾" if scraped.get('from_cache') else "🌐"
-        status = scraped['status']
-        
-        print(f"  {cache_status} {status}")
-        
-        # Add matches if we have keywords to search for
-        results.append({
-            **url_data,
-            **scraped
-        })
+    cached_count = 0
+    error_count = 0
+    success_count = 0
+    
+    with tqdm(total=len(urls), desc="Scraping URLs", unit="url") as pbar:
+        for url_data in urls:
+            url = url_data['url']
+            
+            # Check cache age override
+            use_cache = not force_refresh
+            scraped = await scraper.scrape_url(url, use_cache, max_cache_age_hours)
+            
+            if scraped.get('from_cache'):
+                cached_count += 1
+                success_count += 1
+                status = "cached"
+            elif scraped['status'] == 'error':
+                error_count += 1
+                status = "error"
+            else:
+                success_count += 1
+                status = "fresh"
+            
+            # Update progress bar with current stats
+            pbar.set_postfix({
+                'cached': cached_count,
+                'fresh': success_count - cached_count, 
+                'errors': error_count
+            })
+            pbar.update(1)
+            
+            # Add results
+            results.append({
+                **url_data,
+                **scraped
+            })
     
     await scraper.close()
+    
+    print(f"Scraping summary: {success_count}/{len(urls)} successful, {cached_count} from cache, {error_count} failed")
     return results
 
 
 async def main():
     """Main application logic."""
     parser = argparse.ArgumentParser(description='Firefox history scraper with caching')
-    parser.add_argument('keywords', nargs='*', help='Keywords to search for')
+    
+    # Common arguments
+    parser.add_argument('keywords', nargs='*', help='Keywords to search for (required for search operations)')
     parser.add_argument('--days', type=int, default=7, help='Number of days to look back')
     parser.add_argument('--exclude', action='append', default=[], help='URL patterns to exclude')
     parser.add_argument('--output', default='search_results.html', help='Output HTML file')
-    parser.add_argument('--max-urls', type=int, default=100, help='Maximum URLs to process')
+    parser.add_argument('--max-urls', type=int, default=1000, help='Maximum URLs to process (0 for unlimited)')
     parser.add_argument('--cache-dir', type=Path, help='Cache directory path')
     parser.add_argument('--max-cache-age', type=int, default=24, help='Max cache age in hours')
-    parser.add_argument('--profile', help='Firefox profile name or directory')
+    parser.add_argument('--profile', help='Firefox profile pattern (supports glob: "*", "default*", "work*")')
     
-    # Cache management options
-    parser.add_argument('--search-cache', action='store_true', help='Search only cached content')
-    parser.add_argument('--refresh-cache', action='store_true', help='Force refresh of all URLs')
-    parser.add_argument('--cache-stats', action='store_true', help='Show cache statistics')
-    parser.add_argument('--clean-cache', type=int, metavar='DAYS', help='Remove cache entries older than DAYS')
-    parser.add_argument('--list-profiles', action='store_true', help='List available Firefox profiles')
+    # Operation modes (mutually exclusive)
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument('--list-profiles', action='store_true', 
+                           help='List available Firefox profiles with pattern examples')
+    mode_group.add_argument('--cache-stats', action='store_true', 
+                           help='Show cache statistics')
+    mode_group.add_argument('--clean-cache', type=int, metavar='DAYS', 
+                           help='Remove cache entries older than DAYS')
+    mode_group.add_argument('--search-cache', action='store_true', 
+                           help='Search only cached content')
+    mode_group.add_argument('--refresh-cache', action='store_true', 
+                           help='Force refresh of all URLs and search')
     
     args = parser.parse_args()
     
-    # Initialize cache
+    # Handle profile listing (no cache or keywords needed)
+    if args.list_profiles:
+        extractor = FirefoxHistoryExtractor()
+        try:
+            profiles = extractor.list_profiles()
+            print("Available Firefox Profiles:")
+            for profile in profiles:
+                default_indicator = " (default)" if profile['is_default'] else ""
+                print(f"  - {profile['name']}{default_indicator}")
+                print(f"    Directory: {profile['directory']}")
+            
+            print("\nProfile Pattern Examples:")
+            print("  --profile '*'         # Use any available profile (default)")
+            print("  --profile 'default*'  # Use any profile starting with 'default'")
+            if any('work' in p['name'].lower() for p in profiles):
+                print("  --profile 'work*'     # Use any profile starting with 'work'")
+            print("  --profile 'exact-name' # Use profile with exact directory name")
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+        return
+    
+    # Initialize cache for all other operations
     cache = ContentCache(args.cache_dir)
     
     # Handle cache management commands
     if args.cache_stats:
         stats = cache.get_cache_stats()
-        print("📊 Cache Statistics:")
-        print(f"  • Total entries: {stats['total_entries']}")
-        print(f"  • Successful entries: {stats['successful_entries']}")
-        print(f"  • Date range: {stats['oldest_entry']} to {stats['newest_entry']}")
+        print("Cache Statistics:")
+        print(f"  - Cache location: {cache.cache_dir}")
+        print(f"  - Total entries: {stats['total_entries']}")
+        print(f"  - Successful entries: {stats['successful_entries']}")
+        if stats['oldest_entry']:
+            print(f"  - Date range: {stats['oldest_entry'][:10]} to {stats['newest_entry'][:10]}")
         return
     
     if args.clean_cache:
         deleted = cache.clean_old_entries(args.clean_cache)
-        print(f"🧹 Cleaned {deleted} old cache entries")
+        print(f"Cleaned {deleted} old cache entries from {cache.cache_dir}")
         return
     
+    # For all search operations, keywords are required
     if not args.keywords:
-        print("❌ No keywords provided. Use --help for usage.")
+        print("Error: Keywords required for search operations")
+        print("Available operations: --list-profiles, --cache-stats, --clean-cache")
         return
     
-    # Search cached content only
+    # Initialize extractor for search operations  
+    extractor = FirefoxHistoryExtractor()
+    
+    # Show profile being used (resolve pattern first)
+    try:
+        if args.profile:
+            # Resolve the pattern to get actual profile path
+            resolved_path = extractor.get_profile_path(args.profile)
+            profile_dir = resolved_path.parent.name
+            print(f"Using Firefox profile: {profile_dir}")
+        else:
+            profiles = extractor.list_profiles()
+            default_profile = next((p for p in profiles if p['is_default']), profiles[0])
+            print(f"Using Firefox profile: {default_profile['name']}")
+    except Exception as e:
+        # If we can't resolve now, we'll get a better error later during extraction
+        print(f"Using Firefox profile: {args.profile or 'default'}")
+    
+    # Handle search operations
     if args.search_cache:
-        print(f"🔍 Searching cached content for: {', '.join(args.keywords)}")
+        print(f"Searching cached content for: {', '.join(args.keywords)}")
         results = cache.search_cached_content(args.keywords, args.exclude)
         print(f"Found {len(results)} results in cache")
         
     else:
-        # Extract URLs from Firefox history
-        print(f"📚 Extracting URLs from Firefox history (last {args.days} days)...")
-        extractor = FirefoxHistoryExtractor()
+        # Regular operation (default) or refresh cache mode
+        force_refresh = args.refresh_cache
+        operation_type = "refresh and search" if force_refresh else "search"
+        print(f"Extracting URLs from Firefox history for {operation_type} (last {args.days} days)...")
         
         try:
-            urls = extractor.extract_urls(args.days, args.exclude)
+            urls = extractor.extract_urls(args.days, args.exclude, args.profile)
             print(f"Found {len(urls)} URLs")
             
-            if len(urls) > args.max_urls:
+            if args.max_urls > 0 and len(urls) > args.max_urls:
                 urls = urls[:args.max_urls]
                 print(f"Limited to {args.max_urls} most recent URLs")
             
         except FileNotFoundError as e:
-            print(f"❌ Error: {e}")
+            print(f"Error: {e}")
+            print("Try --list-profiles to see available profiles")
+            return
+        except ValueError as e:
+            print(f"Error: {e}")
+            print("Use --list-profiles to see available profiles")
             return
         
-        # Scrape URLs (using cache when possible)
-        print(f"\n🕷️  Processing {len(urls)} URLs...")
+        # Scrape URLs
+        cache_mode = "Force refreshing" if force_refresh else "Processing"
+        print(f"\n{cache_mode} {len(urls)} URLs...")
+        
         scraped_results = await scrape_and_cache_urls(
-            urls, cache, args.refresh_cache, args.max_cache_age
+            urls, cache, force_refresh, args.max_cache_age
         )
         
         # Search for keywords in scraped content
-        print(f"\n🔍 Searching for keywords: {', '.join(args.keywords)}")
+        print(f"\nSearching for keywords: {', '.join(args.keywords)}")
         keyword_searcher = KeywordSearcher()
         
         results = []
-        for result in scraped_results:
-            if result['status'] == 'success' and result['content']:
+        successful_content = [r for r in scraped_results if r['status'] == 'success' and r['content']]
+        
+        with tqdm(successful_content, desc="Searching content", unit="page") as pbar:
+            matches_found = 0
+            for result in pbar:
                 matches = keyword_searcher.search_content(result['content'], args.keywords)
                 if matches:  # Only include results with matches
                     result['matches'] = matches
                     results.append(result)
+                    matches_found += 1
+                
+                pbar.set_postfix({'matches': matches_found})
     
-    # Generate HTML report
-    print(f"\n📄 Generating HTML report...")
+    # Generate HTML report for search operations
+    print(f"\nGenerating HTML report...")
+    
+    # Debug logging before report generation
+    print(f"DEBUG: About to generate report with {len(results)} results")
+    total_matches = sum(len(r.get('matches', [])) for r in results)
+    urls_with_matches = sum(1 for r in results if r.get('matches'))
+    print(f"DEBUG: {total_matches} total matches across {urls_with_matches} URLs")
+    
     generator = HTMLReportGenerator()
     cache_stats = cache.get_cache_stats()
     html_content = generator.generate_report(results, args.keywords, args.days, cache_stats)
@@ -657,11 +1034,14 @@ async def main():
     # Summary
     matches_found = sum(len(r['matches']) for r in results)
     
-    print(f"\n✅ Complete!")
-    print(f"📊 Summary:")
-    print(f"  • {matches_found} keyword matches found")
-    print(f"  • {len(results)} URLs contained matches")
-    print(f"  • Report saved to: {args.output}")
+    print(f"\nComplete!")
+    print(f"Summary:")
+    print(f"  - {matches_found} keyword matches found")
+    print(f"  - {len(results)} URLs contained matches")
+    print(f"  - Report saved to: {args.output}")
+    
+    # Additional debug info
+    print(f"DEBUG: Summary calculation - matches_found: {matches_found}, len(results): {len(results)}")
 
 
 if __name__ == "__main__":
