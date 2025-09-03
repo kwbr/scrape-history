@@ -1,0 +1,1344 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firefox History Search Results</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .cache-stats { background: #e8f4fd; padding: 10px; border-radius: 5px; font-size: 14px; margin-bottom: 20px; }
+        .result { border: 1px solid #ddd; margin-bottom: 20px; border-radius: 5px; }
+        .result-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; }
+        .result-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .result-url { color: #666; font-size: 14px; word-break: break-all; }
+        .matches { padding: 15px; }
+        .match { background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .keyword { background: #ffc107; padding: 2px 4px; border-radius: 2px; font-weight: bold; }
+        .error { color: #dc3545; font-style: italic; }
+        .meta { color: #6c757d; font-size: 12px; }
+        .cache-indicator { 
+            display: inline-block; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-size: 11px; 
+            font-weight: bold;
+        }
+        .cached { background: #d4edda; color: #155724; }
+        .fresh { background: #cce5ff; color: #004085; }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { padding: 8px; width: 300px; margin-right: 10px; }
+        .search-box button { padding: 8px 15px; }
+        
+        /* Search highlighting */
+        .highlight { background: #ffeb3b; padding: 1px 2px; }
+    </style>
+    <script>
+        function highlightKeywords() {
+            try {
+                const keywords = ["test"];
+                const results = document.querySelectorAll('.match');
+                
+                results.forEach((result, index) => {
+                    let html = result.innerHTML;
+                    keywords.forEach(keyword => {
+                        // Escape special regex characters
+                        const escapedKeyword = keyword.replace(/[.*+?^${}()|\[\]\\]/g, '\$&');
+                        const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+                        html = html.replace(regex, '<span class="highlight">$1</span>');
+                    });
+                    result.innerHTML = html;
+                });
+            } catch (error) {
+                console.error('Error during keyword highlighting:', error);
+            }
+        }
+        
+        function filterResults() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const results = document.querySelectorAll('.result');
+            let visibleCount = 0;
+            
+            results.forEach(result => {
+                const text = result.textContent.toLowerCase();
+                const isVisible = text.includes(searchTerm);
+                result.style.display = isVisible ? 'block' : 'none';
+                if (isVisible) visibleCount++;
+            });
+            
+            // Update visible count
+            document.getElementById('visible-count').textContent = visibleCount;
+        }
+        
+        function toggleHighlighting() {
+            const checkbox = document.getElementById('enable-highlighting');
+            if (checkbox.checked) {
+                highlightKeywords();
+            } else {
+                // Remove highlighting
+                document.querySelectorAll('.highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
+            }
+        }
+        
+        window.onload = function() {
+            try {
+                // Set up highlighting toggle
+                document.getElementById('enable-highlighting').addEventListener('change', toggleHighlighting);
+                
+                // Initial highlighting
+                highlightKeywords();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Firefox History Search Results</h1>
+    
+    <div class="cache-stats">
+        <strong>Cache Status:</strong> 
+        345 pages cached (4.7 MB) | 
+        Cache covers 2025-09-03T19:52:56.519266 to 2025-09-04T07:40:45.071946
+    </div>
+    
+    <div class="summary">
+        <strong>Search Summary:</strong><br>
+        Keywords: test<br>
+        Time period: Last 7 days<br>
+        URLs processed: 31<br>
+        URLs with matches: 31<br>
+        Failed scrapes: 0<br>
+        From cache: 0 | Fresh scrapes: 31
+    </div>
+    
+    <div class="search-box">
+        <input type="text" id="search" placeholder="Filter results..." onkeyup="filterResults()">
+        <button onclick="filterResults()">Filter</button>
+        <label><input type="checkbox" id="enable-highlighting" checked> Enable keyword highlighting</label>
+    </div>
+    
+    
+    <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
+        Displaying <span id="visible-count">31</span> of 31 results
+        
+    </div>
+    
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://grilld.com.au/order-at-table/185" target="_blank">Grill'd Healthy Burgers - Dine in restaurant, order online or in-app today</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://grilld.com.au/order-at-table/185</div>
+            <div class="meta">
+                Visited: 2025-09-03 17:31 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                als, the environment and our communities. See moreCareersWork with usFlexibility, training, great people. It's your recipe for success.Join our teamLatest from Grill'dHungry?Order now
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://grilld.com.au/?order-at-table=185" target="_blank">Grill'd Healthy Burgers - Dine in restaurant, order online or in-app today</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://grilld.com.au/?order-at-table=185</div>
+            <div class="meta">
+                Visited: 2025-09-03 17:31 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                als, the environment and our communities. See moreCareersWork with usFlexibility, training, great people. It's your recipe for success.Join our teamLatest from Grill'dHungry?Order now
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.grilld.com.au/order-at-table/185" target="_blank">Grill'd Healthy Burgers - Dine in restaurant, order online or in-app today</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.grilld.com.au/order-at-table/185</div>
+            <div class="meta">
+                Visited: 2025-09-03 17:31 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                als, the environment and our communities. See moreCareersWork with usFlexibility, training, great people. It's your recipe for success.Join our teamLatest from Grill'dHungry?Order now
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://javadevcentral.com/google-guava-maps/#mapsimmutableenummap" target="_blank">Google Guava Maps | Java Developer Central</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://javadevcentral.com/google-guava-maps/#mapsimmutableenummap</div>
+            <div class="meta">
+                Visited: 2025-09-02 17:31 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                0000, Employee[name=Mary, age=26]=15000} As seen with filterKeys, we can add new entries through the returned view. If the value passes the predicate test, then it will add the entry to the underlying map. If not, it will throw an IllegalArgumentException. Code examples follow. filteredMap.put(new E...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://javadevcentral.com/google-guava-maps/" target="_blank">Google Guava Maps | Java Developer Central</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://javadevcentral.com/google-guava-maps/</div>
+            <div class="meta">
+                Visited: 2025-09-02 17:31 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                0000, Employee[name=Mary, age=26]=15000} As seen with filterKeys, we can add new entries through the returned view. If the value passes the predicate test, then it will add the entry to the underlying map. If not, it will throw an IllegalArgumentException. Code examples follow. filteredMap.put(new E...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://news.ycombinator.com/item?id=42198256" target="_blank">/usr/bin/env -S uv run | Hacker News</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://news.ycombinator.com/item?id=42198256</div>
+            <div class="meta">
+                Visited: 2025-09-03 16:54 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                uvx --with <package> --with pyqt5 --from qtconsole jupyter qtconsole" starts a qtconsole (GUI version of ipython) with <package> installed so you can test it quickly. Temp venv, everything cached so next time it's instant, one single copy of pyqt5 for the current use no matter how many times you run...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                t any setup or package installation. For others we'll wonder why it just started downloading a bunch of packages we already have.Probably not the greatest idea for production environments, where you should not or can not just pull in packages from the internet.It's really cool that it works, but I t...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                er have to think about that.(Mainly through tricks involving hard links)heresie-dabord 9 months ago | parent | prev | next [–] > Probably not the greatest idea for production environmentsNor for any system where one takes care to not needlessly increase the threat surface.thewisenerd 9 months ago | ...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://news.ycombinator.com/item?id=42202770" target="_blank">Other neat tricks with uvx (uv equivalent of npx) to run one time commands in so... | Hacker News</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://news.ycombinator.com/item?id=42202770</div>
+            <div class="meta">
+                Visited: 2025-09-03 16:54 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                uvx --with <package> --with pyqt5 --from qtconsole jupyter qtconsole" starts a qtconsole (GUI version of ipython) with <package> installed so you can test it quickly. Temp venv, everything cached so next time it's instant, one single copy of pyqt5 for the current use no matter how many times you run...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://docs.anthropic.com/en/docs/claude-code/sub-agents" target="_blank">Subagents - Anthropic</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://docs.anthropic.com/en/docs/claude-code/sub-agents</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:55 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                le management You can also manage subagents by working directly with their files: # Create a project subagent mkdir -p .claude/agents echo '--- name: test-runner description: Use proactively to run tests and fix failures --- You are a test automation expert. When you see code changes, proactively ru...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                orking directly with their files: # Create a project subagent mkdir -p .claude/agents echo '--- name: test-runner description: Use proactively to run tests and fix failures --- You are a test automation expert. When you see code changes, proactively run the appropriate tests. If tests fail, analyze ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                reate a project subagent mkdir -p .claude/agents echo '--- name: test-runner description: Use proactively to run tests and fix failures --- You are a test automation expert. When you see code changes, proactively run the appropriate tests. If tests fail, analyze the failures and fix them while prese...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ption: Use proactively to run tests and fix failures --- You are a test automation expert. When you see code changes, proactively run the appropriate tests. If tests fail, analyze the failures and fix them while preserving the original test intent.' > .claude/agents/test-runner.md # Create a user su...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                proactively to run tests and fix failures --- You are a test automation expert. When you see code changes, proactively run the appropriate tests. If tests fail, analyze the failures and fix them while preserving the original test intent.' > .claude/agents/test-runner.md # Create a user subagent mkdi...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ert. When you see code changes, proactively run the appropriate tests. If tests fail, analyze the failures and fix them while preserving the original test intent.' > .claude/agents/test-runner.md # Create a user subagent mkdir -p ~/.claude/agents # ... create subagent file ​Using subagents effective...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                proactively run the appropriate tests. If tests fail, analyze the failures and fix them while preserving the original test intent.' > .claude/agents/test-runner.md # Create a user subagent mkdir -p ~/.claude/agents # ... create subagent file ​Using subagents effectively ​Automatic delegation Claude ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ROACTIVELY” or “MUST BE USED” in your description field. ​Explicit invocation Request a specific subagent by mentioning it in your command: > Use the test-runner subagent to fix failing tests > Have the code-reviewer subagent look at my recent changes > Ask the debugger subagent to investigate this ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                r description field. ​Explicit invocation Request a specific subagent by mentioning it in your command: > Use the test-runner subagent to fix failing tests > Have the code-reviewer subagent look at my recent changes > Ask the debugger subagent to investigate this error ​Example subagents ​Code revie...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ions and variables are well-named - No duplicated code - Proper error handling - No exposed secrets or API keys - Input validation implemented - Good test coverage - Performance considerations addressed Provide feedback organized by priority: - Critical issues (must fix) - Warnings (should fix) - Su...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://support.mozilla.org/en-US/kb/firefox-uses-too-much-memory-or-cpu-resources" target="_blank">
+  Firefox uses too much memory or CPU resources - How to fix | Firefox Help
+</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://support.mozilla.org/en-US/kb/firefox-uses-too-much-memory-or-cpu-resources</div>
+            <div class="meta">
+                Visited: 2025-09-02 09:31 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Mozilla will gather data including memory and CPU usage, which will help make Firefox better for future versions. Table of Contents1 Update to the latest version2 Restart Firefox3 Restart your computer4 Disable resource consuming extensions and themes5 Hide intrusive content6 Use fewer tabs7 Close t...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Use additional troubleshooting tools12.1 Firefox tools12.2 Operating system tools13 Add RAM to your computer14 Upgrade your computer Update to the latest version The latest Firefox version may include performance improvements. Update Firefox to the latest release. Restart Firefox Firefox may use mor...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ubleshooting tools12.1 Firefox tools12.2 Operating system tools13 Add RAM to your computer14 Upgrade your computer Update to the latest version The latest Firefox version may include performance improvements. Update Firefox to the latest release. Restart Firefox Firefox may use more system resources...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                omputer14 Upgrade your computer Update to the latest version The latest Firefox version may include performance improvements. Update Firefox to the latest release. Restart Firefox Firefox may use more system resources if it's left open for long periods of time. A workaround for this is to periodical...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://lichess.org/" target="_blank">lichess.org • Free Online Chess</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://lichess.org/</div>
+            <div class="meta">
+                Visited: 2025-09-02 21:19 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                for streamers whose teams finish in the top 4! If you're a streamer and want to participate with your team, see here. Our Game of the Month August Contest is underway: Share your best Lichess standard game played in August 2025 until 12 September! The winner will be announced on 24 September, follow...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="http://lichess.org/" target="_blank">lichess.org • Free Online Chess</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">http://lichess.org/</div>
+            <div class="meta">
+                Visited: 2025-09-02 20:49 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                for streamers whose teams finish in the top 4! If you're a streamer and want to participate with your team, see here. Our Game of the Month August Contest is underway: Share your best Lichess standard game played in August 2025 until 12 September! The winner will be announced on 24 September, follow...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://cameronwestland.com/from-generic-agents-to-human-first-sub-agents" target="_blank">From Generic Agents to Human-First Sub-Agents</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://cameronwestland.com/from-generic-agents-to-human-first-sub-agents</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:43 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                6 minutes. My colleague Sam spent nearly an hour trying to review it. Here's what the AI gave me:Pipeline Overview: Implement staged rollout with A/B testing framework, targeting 5% initial traffic with automatic failover mechanisms and comprehensive monitoring across three deployment zones...And he...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://somafm.com/listen/" target="_blank">
+SomaFM: Listen Now!
+</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://somafm.com/listen/</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:10 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                32k AAC (Non-SSL): 128k 64k 32k MP3 PLS (SSL): 128k MP3 M3U: 128k MP3 (Non-SSL): 128k Listeners: 22 Now playing: Herbie Hancock - Survival Of The Fittest n5MD Radio Emotional Experiments in Music: Ambient, modern composition, post-rock, & experimental electronic music Listen: Web Player AAC PLS (SSL...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://somafm.com/" target="_blank">
+SomaFM: Commercial-free, Listener-supported Radio
+</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://somafm.com/</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:09 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                32k AAC (Non-SSL): 128k 64k 32k MP3 PLS (SSL): 128k MP3 M3U: 128k MP3 (Non-SSL): 128k Listeners: 22 Now playing: Herbie Hancock - Survival Of The Fittest n5MD Radio Emotional Experiments in Music: Ambient, modern composition, post-rock, & experimental electronic music Listen: Web Player AAC PLS (SSL...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://medium.com/feenk/rewilding-software-engineering-083b86c81c43" target="_blank">RSE : Ch 2 : How we make decisions by Tudor & Simon | feenk</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://medium.com/feenk/rewilding-software-engineering-083b86c81c43</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:52 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                of manufacturing micro tools should be as industrialised as possible, ideally through the use of a toolkit. Similar dynamics happened in the space of testing. When the cost of creating a single test became so small it did not matter, automatic and industrialized testing became adopted at scale. We c...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                dustrialised as possible, ideally through the use of a toolkit. Similar dynamics happened in the space of testing. When the cost of creating a single test became so small it did not matter, automatic and industrialized testing became adopted at scale. We can regard a test as a form of micro tool tha...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ar dynamics happened in the space of testing. When the cost of creating a single test became so small it did not matter, automatic and industrialized testing became adopted at scale. We can regard a test as a form of micro tool that takes the execution of a system and transforms it into a red/yellow...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                n the cost of creating a single test became so small it did not matter, automatic and industrialized testing became adopted at scale. We can regard a test as a form of micro tool that takes the execution of a system and transforms it into a red/yellow/green signal. The same idea can be extended to a...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                lts could be achieved at a much faster speed and lower cost.If you have any form of legacy estate, then we suspect the example is relevant to you. To test, simply ask your engineering team to provide you with a model of the system. If the result is a manual hand written or powerpoint diagram (such a...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.mediaweek.com.au/sydney-radio-ratings-2024-survey-6-ben-kj-slip-jonesy-amanda-climb-at-wsfm-bogart-too-at-smooth/" target="_blank">Sydney Radio Ratings 2024, Survey 6: Ben & K&J slip</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.mediaweek.com.au/sydney-radio-ratings-2024-survey-6-ben-kj-slip-jonesy-amanda-climb-at-wsfm-bogart-too-at-smooth/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:21 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                orst) Best 10+ 7.7% (6.4%) Best Breakfast 7.3% (6.3%)Breakfast is now 1.0 shy of its best last year which means it’s equal lowest with last year’s softest result. Morning, afternoon and drive all managed to trade higher. Not much movement in demos except with the under 18s where Nova now ranks #1 on...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.spiegel.de/" target="_blank">DER SPIEGEL | Online-Nachrichten</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.spiegel.de/</div>
+            <div class="meta">
+                Visited: 2025-09-03 10:49 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                dcast vom SPIEGEL Krieg in der Ukraine News und Hintergründe im Video Spitzengespräch Der Talk mit Markus Feldenkirchen Wir drehen eine Runde Die Autotests mit Jürgen Pander Bundestagswahl News und Reportagen im Video Im Verhör Die True-Crime-Serie von SPIEGEL TV SPIEGEL Bestseller Mehr Lesen mit El...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Kretz 3 Min Zur Merkliste hinzufügen Historische Geste von Macron: Franzosen streiten über London-Reise eines Teppichs 3 Min Zur Merkliste hinzufügen Tests 25 Min Zur Merkliste hinzufügen Eismaschine im Test: Wird die Creami dem Hype gerecht? Von Peter Wagner 11 Min Zur Merkliste hinzufügen Mobilitä...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                e von Macron: Franzosen streiten über London-Reise eines Teppichs 3 Min Zur Merkliste hinzufügen Tests 25 Min Zur Merkliste hinzufügen Eismaschine im Test: Wird die Creami dem Hype gerecht? Von Peter Wagner 11 Min Zur Merkliste hinzufügen Mobilität 1 Min Zur Merkliste hinzufügen Zahlen des Kraftfahr...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                hönste am Essen gehen mit Kindern? Wenn’s vorbei ist. Von Flutschfingern, Tisch-Tsunamis und Gläserschach. 6 Min Zur Merkliste hinzufügen Produkte im Test alle Beiträge Die neuen Pixel-Phones können mit der Stimme des Testers fremde Sprachen sprechen und Dinge fotografieren, die mit bloßem Auge kaum...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                gern, Tisch-Tsunamis und Gläserschach. 6 Min Zur Merkliste hinzufügen Produkte im Test alle Beiträge Die neuen Pixel-Phones können mit der Stimme des Testers fremde Sprachen sprechen und Dinge fotografieren, die mit bloßem Auge kaum zu sehen sind. Reicht Googles KI aus, um die wenigen Hardware-Neuer...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                hrradketten laufen leise, können auf ungeschützten Hosenbeinen aber schlimme Schmierflecken hinterlassen. Wir haben sechs Hosenbänder und -klammern getestet, die das verhindern sollen. Von Markus Linden 7 Min Zur Merkliste hinzufügen ANZEIGE Die Amex Business Platinum Card ist eine der begehrtesten ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                mern getestet, die das verhindern sollen. Von Markus Linden 7 Min Zur Merkliste hinzufügen ANZEIGE Die Amex Business Platinum Card ist eine der begehrtesten Kreditkarten für Selbstständige und Unternehmer. Jetzt gibt es einen tollen Bonus: 200.000 Membership Rewards Punkte. Doch für wen ist die Kart...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                starren Bahnen abzufahren, können Carrera-Autos jetzt die ganze Breite der Strecke nutzen und per App gesteuert werden. Wir haben die neue Freiheit getestet. Von Jonas Mielke 3 Min Zur Merkliste hinzufügen Faltbare Smartphones sind dick, schwer und teuer? Im Test von Samsungs neuem Falt-Flaggschiff ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                rt werden. Wir haben die neue Freiheit getestet. Von Jonas Mielke 3 Min Zur Merkliste hinzufügen Faltbare Smartphones sind dick, schwer und teuer? Im Test von Samsungs neuem Falt-Flaggschiff zeigt sich, dass auf das neue Modell nur noch eine dieser Aussagen zutrifft. Von Matthias Kremp 7 Min Zur Mer...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                beschichtet, aber scharf anbraten wie in einer Eisenpfanne? Hybridpfannen versprechen das Beste aus beiden Bratwelten. Unser Autor hat drei Modelle getestet und ist nun angetan von der Idee. Von Peter Wagner 10 Min Zur Merkliste hinzufügen Ein Akku-Bohrschrauber mit eingebautem Leitungsdetektor und ...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://cameronwestland.com/" target="_blank">Cameron Westland</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://cameronwestland.com/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:32 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Cameron WestlandCAMERON WESTLAND2025AugustIt's not 10x. It's 36x - this is what it looks like to kill a $30k meeting with AILLM Evals Are Just Tests. Why Are We Making This So Complicated?JulyFrom Generic Agents to Human-First Sub-AgentsFrom Three-Hour Podcasts to Kindle-Ready TextHow might we in
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.theguardian.com/tv-and-radio/2025/sep/02/blue-murder-australia-tv-show-miniseries-30-years" target="_blank">Blue Murder at 30: how the miniseries transfixed Australia – and inspired death threats and bootlegs | Australian television | The Guardian</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.theguardian.com/tv-and-radio/2025/sep/02/blue-murder-australia-tv-show-miniseries-30-years</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:16 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                e any more’: Randa Abdel-Fattah on Gaza, boycotts and her new novelMelbourne Symphony Orchestra performance in London interrupted by pro-Palestine protestorsSally Phillips: ‘I saw Hugh Grant and I screamed. I was surprised he was human-size’Comments (…)Sign in or create your Guardian account to join...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.theguardian.com/" target="_blank">Latest news, sport and opinion from the Guardian</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.theguardian.com/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:11 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Latest news, sport and opinion from the Guardian Skip to main contentSkip to navigationNewsHide0:40ChinaHot mic catches Putin and Xi discussing organ transp
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                To address this, we need media and politicians capable of navigating complexitiesMargaret SimonsSome commentators claimed the March for Australia protests were a response to legitimate concerns rather than motivated by racism. Such defensiveness and denial is unhelpfulMore opinionHideI’m the son of ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ly how hard can it be? SportHideAFLAdded spice ensures Adelaide-Collingwood rivalry reaches boiling point in finals Soaring temperatures in recent contests mean it will be no surprise if things spill over when the two clubs meet again on Thursday nightFrom the PocketCurnow and Carlton give insight i...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                2026 World Cup tickets will start at $60 but dynamic pricing loomsCricketPat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Pat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’ to former Liverpool forwards Núñez and DíazFootball17 trains, 11 buses a...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ball17 trains, 11 buses and a stag do: one Wales fan’s five-week venture for Kazakhstan qualifierBoxingImane Khelif ‘has right to appeal’ over gender tests but will miss world championshipsMore newsHideUS politics liveJudge sides with Harvard and orders Trump to reverse billions in funding cutsFeder...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.theguardian.com/au" target="_blank">Latest news, sport and opinion from the Guardian</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.theguardian.com/au</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:11 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Latest news, sport and opinion from the Guardian Skip to main contentSkip to navigationNewsHide0:40ChinaHot mic catches Putin and Xi discussing organ transp
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                To address this, we need media and politicians capable of navigating complexitiesMargaret SimonsSome commentators claimed the March for Australia protests were a response to legitimate concerns rather than motivated by racism. Such defensiveness and denial is unhelpfulMore opinionHideI’m the son of ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ly how hard can it be? SportHideAFLAdded spice ensures Adelaide-Collingwood rivalry reaches boiling point in finals Soaring temperatures in recent contests mean it will be no surprise if things spill over when the two clubs meet again on Thursday nightFrom the PocketCurnow and Carlton give insight i...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                2026 World Cup tickets will start at $60 but dynamic pricing loomsCricketPat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Pat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’ to former Liverpool forwards Núñez and DíazFootball17 trains, 11 buses a...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ball17 trains, 11 buses and a stag do: one Wales fan’s five-week venture for Kazakhstan qualifierBoxingImane Khelif ‘has right to appeal’ over gender tests but will miss world championshipsMore newsHideUS politics liveJudge sides with Harvard and orders Trump to reverse billions in funding cutsFeder...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.abc.net.au/news" target="_blank">ABC News - Trusted Source of Latest News & Headlines</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.abc.net.au/news</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:10 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ABC News - Trusted Source of Latest News & HeadlinesABC NewsLoadingTop StoriesAllStateTrendingTop Stories'Untenable' Chinese embassy concert in Parliament House stopped by officialsSBy
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="http://theguardian.com/" target="_blank">Latest news, sport and opinion from the Guardian</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">http://theguardian.com/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:11 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Latest news, sport and opinion from the Guardian Skip to main contentSkip to navigationNewsHide0:40ChinaHot mic catches Putin and Xi discussing organ transp
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                To address this, we need media and politicians capable of navigating complexitiesMargaret SimonsSome commentators claimed the March for Australia protests were a response to legitimate concerns rather than motivated by racism. Such defensiveness and denial is unhelpfulMore opinionHideI’m the son of ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ly how hard can it be? SportHideAFLAdded spice ensures Adelaide-Collingwood rivalry reaches boiling point in finals Soaring temperatures in recent contests mean it will be no surprise if things spill over when the two clubs meet again on Thursday nightFrom the PocketCurnow and Carlton give insight i...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                2026 World Cup tickets will start at $60 but dynamic pricing loomsCricketPat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Pat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’ to former Liverpool forwards Núñez and DíazFootball17 trains, 11 buses a...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ball17 trains, 11 buses and a stag do: one Wales fan’s five-week venture for Kazakhstan qualifierBoxingImane Khelif ‘has right to appeal’ over gender tests but will miss world championshipsMore newsHideUS politics liveJudge sides with Harvard and orders Trump to reverse billions in funding cutsFeder...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://theguardian.com/" target="_blank">Latest news, sport and opinion from the Guardian</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://theguardian.com/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:11 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Latest news, sport and opinion from the Guardian Skip to main contentSkip to navigationNewsHide0:40ChinaHot mic catches Putin and Xi discussing organ transp
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                To address this, we need media and politicians capable of navigating complexitiesMargaret SimonsSome commentators claimed the March for Australia protests were a response to legitimate concerns rather than motivated by racism. Such defensiveness and denial is unhelpfulMore opinionHideI’m the son of ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ly how hard can it be? SportHideAFLAdded spice ensures Adelaide-Collingwood rivalry reaches boiling point in finals Soaring temperatures in recent contests mean it will be no surprise if things spill over when the two clubs meet again on Thursday nightFrom the PocketCurnow and Carlton give insight i...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                2026 World Cup tickets will start at $60 but dynamic pricing loomsCricketPat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Pat Cummins ready to ‘take a few risks’ with rehab to be fit for first Ashes TestMore sportHideCyclingNo Vuelta stage 11 winner as pro-Palestinian protesters cause chaos in BilbaoFootballMohamed Salah calls out fan ‘disrespect’ to former Liverpool forwards Núñez and DíazFootball17 trains, 11 buses a...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ball17 trains, 11 buses and a stag do: one Wales fan’s five-week venture for Kazakhstan qualifierBoxingImane Khelif ‘has right to appeal’ over gender tests but will miss world championshipsMore newsHideUS politics liveJudge sides with Harvard and orders Trump to reverse billions in funding cutsFeder...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.abc.net.au/news/2025-09-02/was-australia-winter-weather-actually-colder-than-normal/105721580" target="_blank">Australia's winter colder than predicted, but were temperatures actually below average? - ABC News</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.abc.net.au/news/2025-09-02/was-australia-winter-weather-actually-colder-than-normal/105721580</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:10 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                s out for being atypically uniform, with the majority of the nation seeing totals near average — although Perth and Sydney were both soaked by the wettest winter in decades.This winter saw above-average temperatures across most of Australia, including in all capital cities. (ABC News)All capitals wa...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                malAccording to the BOM's ACORN-SAT dataset, the mean temperature across Australia this winter was 0.48C above the 1961-1990 baseline average.The greatest departures from normal were across north-east Queensland and near the South Australia-Western Australia border where winter was more than 1C warm...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                which did see exceptional rain was the central NSW coast — Sydney's Observatory Hill station received 567 millimetres, 257mm above average and the wettest winter in 18 years.The drenching was sufficient for Sydney to claim the wettest capital trophy for the second consecutive winter.Perth, which is ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Hill station received 567 millimetres, 257mm above average and the wettest winter in 18 years.The drenching was sufficient for Sydney to claim the wettest capital trophy for the second consecutive winter.Perth, which is normally our wettest capital in the cooler months, was not far behind with 528mm...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                8 years.The drenching was sufficient for Sydney to claim the wettest capital trophy for the second consecutive winter.Perth, which is normally our wettest capital in the cooler months, was not far behind with 528mm — although this figure is an estimate after a weather station malfunction in June and...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                nly moderately above the long-term average by 57mm, the region's decline in rain from climate change since the mid-20th century ensured the city's wettest winter in 29 years.A strangely uniform rain map this winter after near average totals across most of Australia. (ABC News)All other capitals reco...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://blog.wilsonl.in/search-engine/" target="_blank">Building a web search engine from scratch in two months with 3 billion neural embeddings</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://blog.wilsonl.in/search-engine/</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:07 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                the concept: Grow set of gathered diverse raw web pages. Parse, normalize, augment, and embed them into a queryable HNSW index. Build and expand the test dataset of queries as I crawl, debug, experiment, and eval. Create a UI to introspect data at each stage, see failure points, and tune. Normalizat...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                . Another approach that I would experiment with is late chunking. Initial results I built a UX to visualize and interact with pages in my sandbox and test out queries. The results seemed to be pretty good. For example, on this S3 documentation page, using a natural language question gave multiple re...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ling was adopted over global locking: Atomicity maintained via per-task locks. Changes in timeout (e.g. heartbeats) don't mutate heap; instead, the latest expiration is re-checked when background loop goes through timeout heap. An available origin that becomes empty isn't removed from available orig...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                n search results only. I've added LLM-based reranking and filtering, which those two final sliders represent. I'm experimenting to see if using the latest general intelligence LLMs can help achieve better reranking and filtering without the need for a custom model and training data. Groq is the infe...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://www.abc.net.au/news/" target="_blank">ABC News - Trusted Source of Latest News & Headlines</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://www.abc.net.au/news/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:10 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ABC News - Trusted Source of Latest News & HeadlinesABC NewsLoadingTop StoriesAllStateTrendingTop Stories'Untenable' Chinese embassy concert in Parliament House stopped by officialsSBy
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="http://news.abc.net.au/" target="_blank">ABC News - Trusted Source of Latest News & Headlines</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">http://news.abc.net.au/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:10 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ABC News - Trusted Source of Latest News & HeadlinesABC NewsLoadingTop StoriesAllStateTrendingTop Stories'Untenable' Chinese embassy concert in Parliament House stopped by officialsSBy
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://news.abc.net.au/" target="_blank">ABC News - Trusted Source of Latest News & Headlines</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://news.abc.net.au/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:10 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                ABC News - Trusted Source of Latest News & HeadlinesABC NewsLoadingTop StoriesAllStateTrendingTop Stories'Untenable' Chinese embassy concert in Parliament House stopped by officialsSBy
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://spiegel.de/" target="_blank">DER SPIEGEL | Online-Nachrichten</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">https://spiegel.de/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:36 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                dcast vom SPIEGEL Krieg in der Ukraine News und Hintergründe im Video Spitzengespräch Der Talk mit Markus Feldenkirchen Wir drehen eine Runde Die Autotests mit Jürgen Pander Bundestagswahl News und Reportagen im Video Im Verhör Die True-Crime-Serie von SPIEGEL TV SPIEGEL Bestseller Mehr Lesen mit El...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Kretz 3 Min Zur Merkliste hinzufügen Historische Geste von Macron: Franzosen streiten über London-Reise eines Teppichs 3 Min Zur Merkliste hinzufügen Tests 25 Min Zur Merkliste hinzufügen Eismaschine im Test: Wird die Creami dem Hype gerecht? Von Peter Wagner 11 Min Zur Merkliste hinzufügen Mobilitä...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                e von Macron: Franzosen streiten über London-Reise eines Teppichs 3 Min Zur Merkliste hinzufügen Tests 25 Min Zur Merkliste hinzufügen Eismaschine im Test: Wird die Creami dem Hype gerecht? Von Peter Wagner 11 Min Zur Merkliste hinzufügen Mobilität 1 Min Zur Merkliste hinzufügen Zahlen des Kraftfahr...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                hönste am Essen gehen mit Kindern? Wenn’s vorbei ist. Von Flutschfingern, Tisch-Tsunamis und Gläserschach. 6 Min Zur Merkliste hinzufügen Produkte im Test alle Beiträge Die neuen Pixel-Phones können mit der Stimme des Testers fremde Sprachen sprechen und Dinge fotografieren, die mit bloßem Auge kaum...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                gern, Tisch-Tsunamis und Gläserschach. 6 Min Zur Merkliste hinzufügen Produkte im Test alle Beiträge Die neuen Pixel-Phones können mit der Stimme des Testers fremde Sprachen sprechen und Dinge fotografieren, die mit bloßem Auge kaum zu sehen sind. Reicht Googles KI aus, um die wenigen Hardware-Neuer...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                hrradketten laufen leise, können auf ungeschützten Hosenbeinen aber schlimme Schmierflecken hinterlassen. Wir haben sechs Hosenbänder und -klammern getestet, die das verhindern sollen. Von Markus Linden 7 Min Zur Merkliste hinzufügen ANZEIGE Die Amex Business Platinum Card ist eine der begehrtesten ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                mern getestet, die das verhindern sollen. Von Markus Linden 7 Min Zur Merkliste hinzufügen ANZEIGE Die Amex Business Platinum Card ist eine der begehrtesten Kreditkarten für Selbstständige und Unternehmer. Jetzt gibt es einen tollen Bonus: 200.000 Membership Rewards Punkte. Doch für wen ist die Kart...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                starren Bahnen abzufahren, können Carrera-Autos jetzt die ganze Breite der Strecke nutzen und per App gesteuert werden. Wir haben die neue Freiheit getestet. Von Jonas Mielke 3 Min Zur Merkliste hinzufügen Faltbare Smartphones sind dick, schwer und teuer? Im Test von Samsungs neuem Falt-Flaggschiff ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                rt werden. Wir haben die neue Freiheit getestet. Von Jonas Mielke 3 Min Zur Merkliste hinzufügen Faltbare Smartphones sind dick, schwer und teuer? Im Test von Samsungs neuem Falt-Flaggschiff zeigt sich, dass auf das neue Modell nur noch eine dieser Aussagen zutrifft. Von Matthias Kremp 7 Min Zur Mer...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                beschichtet, aber scharf anbraten wie in einer Eisenpfanne? Hybridpfannen versprechen das Beste aus beiden Bratwelten. Unser Autor hat drei Modelle getestet und ist nun angetan von der Idee. Von Peter Wagner 10 Min Zur Merkliste hinzufügen Ein Akku-Bohrschrauber mit eingebautem Leitungsdetektor und ...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="http://spiegel.de/" target="_blank">DER SPIEGEL | Online-Nachrichten</a>
+                
+                <span class="cache-indicator fresh">FRESH</span>
+                
+            </div>
+            <div class="result-url">http://spiegel.de/</div>
+            <div class="meta">
+                Visited: 2025-09-02 07:36 | 
+                Scraped: Unknown
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                dcast vom SPIEGEL Krieg in der Ukraine News und Hintergründe im Video Spitzengespräch Der Talk mit Markus Feldenkirchen Wir drehen eine Runde Die Autotests mit Jürgen Pander Bundestagswahl News und Reportagen im Video Im Verhör Die True-Crime-Serie von SPIEGEL TV SPIEGEL Bestseller Mehr Lesen mit El...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                Kretz 3 Min Zur Merkliste hinzufügen Historische Geste von Macron: Franzosen streiten über London-Reise eines Teppichs 3 Min Zur Merkliste hinzufügen Tests 25 Min Zur Merkliste hinzufügen Eismaschine im Test: Wird die Creami dem Hype gerecht? Von Peter Wagner 11 Min Zur Merkliste hinzufügen Mobilitä...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                e von Macron: Franzosen streiten über London-Reise eines Teppichs 3 Min Zur Merkliste hinzufügen Tests 25 Min Zur Merkliste hinzufügen Eismaschine im Test: Wird die Creami dem Hype gerecht? Von Peter Wagner 11 Min Zur Merkliste hinzufügen Mobilität 1 Min Zur Merkliste hinzufügen Zahlen des Kraftfahr...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                hönste am Essen gehen mit Kindern? Wenn’s vorbei ist. Von Flutschfingern, Tisch-Tsunamis und Gläserschach. 6 Min Zur Merkliste hinzufügen Produkte im Test alle Beiträge Die neuen Pixel-Phones können mit der Stimme des Testers fremde Sprachen sprechen und Dinge fotografieren, die mit bloßem Auge kaum...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                gern, Tisch-Tsunamis und Gläserschach. 6 Min Zur Merkliste hinzufügen Produkte im Test alle Beiträge Die neuen Pixel-Phones können mit der Stimme des Testers fremde Sprachen sprechen und Dinge fotografieren, die mit bloßem Auge kaum zu sehen sind. Reicht Googles KI aus, um die wenigen Hardware-Neuer...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                hrradketten laufen leise, können auf ungeschützten Hosenbeinen aber schlimme Schmierflecken hinterlassen. Wir haben sechs Hosenbänder und -klammern getestet, die das verhindern sollen. Von Markus Linden 7 Min Zur Merkliste hinzufügen ANZEIGE Die Amex Business Platinum Card ist eine der begehrtesten ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                mern getestet, die das verhindern sollen. Von Markus Linden 7 Min Zur Merkliste hinzufügen ANZEIGE Die Amex Business Platinum Card ist eine der begehrtesten Kreditkarten für Selbstständige und Unternehmer. Jetzt gibt es einen tollen Bonus: 200.000 Membership Rewards Punkte. Doch für wen ist die Kart...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                starren Bahnen abzufahren, können Carrera-Autos jetzt die ganze Breite der Strecke nutzen und per App gesteuert werden. Wir haben die neue Freiheit getestet. Von Jonas Mielke 3 Min Zur Merkliste hinzufügen Faltbare Smartphones sind dick, schwer und teuer? Im Test von Samsungs neuem Falt-Flaggschiff ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                rt werden. Wir haben die neue Freiheit getestet. Von Jonas Mielke 3 Min Zur Merkliste hinzufügen Faltbare Smartphones sind dick, schwer und teuer? Im Test von Samsungs neuem Falt-Flaggschiff zeigt sich, dass auf das neue Modell nur noch eine dieser Aussagen zutrifft. Von Matthias Kremp 7 Min Zur Mer...
+            </div>
+            
+            <div class="match">
+                <strong>Found "test":</strong><br>
+                beschichtet, aber scharf anbraten wie in einer Eisenpfanne? Hybridpfannen versprechen das Beste aus beiden Bratwelten. Unser Autor hat drei Modelle getestet und ist nun angetan von der Idee. Von Peter Wagner 10 Min Zur Merkliste hinzufügen Ein Akku-Bohrschrauber mit eingebautem Leitungsdetektor und ...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    
+    <div class="meta">
+        Generated on 2025-09-04 07:40:45
+    </div>
+</body>
+</html>
+    

@@ -936,12 +936,12 @@ class HTMLReportGenerator:
 
 
 async def scrape_and_cache_urls(urls: List[Dict], cache: ContentCache, 
-                              force_refresh: bool = False, max_cache_age_hours: int = 24) -> List[Dict]:
+                              force_refresh: bool = False, max_cache_age_hours: int = 24, max_concurrent: int = 10) -> List[Dict]:
     """Scrape URLs using cache when possible."""
     if not urls:
         return []
         
-    scraper = AsyncWebScraper(cache)
+    scraper = AsyncWebScraper(cache, max_concurrent)
     results = []
     
     cached_count = 0
@@ -1008,6 +1008,7 @@ async def main():
     parser.add_argument('--show-exclusions', action='store_true', help='Show active exclusion patterns and exit')
     parser.add_argument('--output', default='search_results.html', help='Output HTML file')
     parser.add_argument('--max-urls', type=int, default=1000, help='Maximum fresh URLs to scrape (cached URLs do not count, 0 for unlimited)')
+    parser.add_argument('--max-concurrent', type=int, default=10, help='Maximum concurrent HTTP requests (default: 10, try 20-30 for faster scraping)')
     parser.add_argument('--cache-dir', type=Path, help='Cache directory path')
     parser.add_argument('--max-cache-age', type=int, default=24, help='Max cache age in hours')
     parser.add_argument('--profile', help='Firefox profile pattern (supports glob: "*", "default*", "work*")')
@@ -1200,7 +1201,7 @@ async def main():
         print(f"\n{cache_mode} {len(urls)} URLs...")
         
         scraped_results = await scrape_and_cache_urls(
-            urls, cache, force_refresh, args.max_cache_age
+            urls, cache, force_refresh, args.max_cache_age, args.max_concurrent
         )
         
         # Search for keywords in scraped content
