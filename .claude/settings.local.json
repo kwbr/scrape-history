@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(/Users/kweber/Projects/kwbr/history-scrape/firefox_history_scraper.sh:*)",
+      "Bash(./test_html.sh:*)",
+      "Bash(source:*)",
+      "Bash(/dev/null)",
+      "Bash(KEYWORDS=\"python,machine learning\")",
+      "Bash(DAYS=7)",
+      "Bash(MATCH_ANY=false)",
+      "Bash(generate_html_output:*)",
+      "Bash(./test_functions.sh:*)",
+      "Bash(rm:*)",
+      "Bash(./test_exclusions.sh:*)",
+      "Bash(./test_my_exclusions.sh:*)",
+      "Bash(./firefox_history_scraper.sh:*)",
+      "Bash(./test_exclusions_only.sh:*)",
+      "Bash(pgrep:*)",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(sqlite3:*)",
+      "Bash(./debug_db.sh:*)",
+      "Bash(./simple_test.sh:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(./extract_firefox_urls.sh:*)",
+      "Bash(./scrape_urls.sh:*)",
+      "Bash(./extract_text.sh:*)",
+      "Bash(./find_keywords.sh -t test_text/ -u test_urls.tsv -k \"YouTube\" --verbose)",
+      "Bash(./find_keywords.sh -t test_text/ -u test_urls.tsv -k \"YouTube\" -o test_results.json --verbose)",
+      "Bash(./find_keywords.sh -t test_text/ -u test_urls.tsv -k \"YouTube\" -o test_results.json)",
+      "Bash(./generate_report.sh:*)",
+      "Bash(bash:*)",
+      "Bash(timeout:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(command -v:*)",
+      "Bash(./scrape-history:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/kweber/Library",
+      "/private/tmp"
+    ]
+  }
+}

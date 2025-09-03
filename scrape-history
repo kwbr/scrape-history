@@ -598,16 +598,8 @@ class HTMLReportGenerator:
     <script>
         function highlightKeywords() {
             try {
-                console.log('Starting keyword highlighting...');
                 const keywords = {{ keywords | tojson }};
                 const results = document.querySelectorAll('.match');
-                
-                console.log(`Found ${results.length} match elements to highlight`);
-                console.log('Keywords:', keywords);
-                
-                if (results.length > 50) {
-                    console.warn('Large number of results - highlighting may be slow');
-                }
                 
                 results.forEach((result, index) => {
                     let html = result.innerHTML;
@@ -619,8 +611,6 @@ class HTMLReportGenerator:
                     });
                     result.innerHTML = html;
                 });
-                
-                console.log('Keyword highlighting completed');
             } catch (error) {
                 console.error('Error during keyword highlighting:', error);
             }
@@ -656,16 +646,11 @@ class HTMLReportGenerator:
         
         window.onload = function() {
             try {
-                console.log('Page loaded - initializing...');
-                console.log(`Total results found: ${document.querySelectorAll('.result').length}`);
-                
                 // Set up highlighting toggle
                 document.getElementById('enable-highlighting').addEventListener('change', toggleHighlighting);
                 
                 // Initial highlighting
                 highlightKeywords();
-                
-                console.log('Initialization complete');
             } catch (error) {
                 console.error('Error during initialization:', error);
             }
@@ -697,14 +682,6 @@ class HTMLReportGenerator:
         <label><input type="checkbox" id="enable-highlighting" checked> Enable keyword highlighting</label>
     </div>
     
-    <!-- Debug Information -->
-    <div class="debug-info" style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">
-        <strong>Debug Info:</strong><br>
-        Total results in template: {{ results|length }}<br>
-        Results with matches: {% set match_count = results|selectattr('matches')|list|length %}{{ match_count }}<br>
-        Keywords being searched: {{ keywords|join(', ') }}<br>
-        Template rendering time: {{ generation_time.strftime('%Y-%m-%d %H:%M:%S') }}
-    </div>
     
     <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
         Displaying <span id="visible-count">{{ results|length }}</span> of {{ results|length }} results
@@ -763,29 +740,10 @@ class HTMLReportGenerator:
     
     def generate_report(self, results: List[Dict], keywords: List[str], days: int = None, cache_stats: Dict = None) -> str:
         """Generate HTML report from search results."""
-        # Debug logging to identify the discrepancy
-        print(f"DEBUG: Generating report with {len(results)} total results")
-        
-        # Validate results and count different types
-        valid_results = []
-        empty_matches_count = 0
-        
-        for i, result in enumerate(results):
-            if 'matches' not in result:
-                print(f"DEBUG: Result {i} missing 'matches' field: {result.get('url', 'unknown')}")
-                continue
-            if not result['matches']:  # Empty list
-                print(f"DEBUG: Result {i} has empty matches: {result.get('url', 'unknown')}")
-                empty_matches_count += 1
-                continue
-            valid_results.append(result)
-        
-        print(f"DEBUG: {len(valid_results)} results with actual matches")
-        print(f"DEBUG: {empty_matches_count} results with empty matches")
-        
         # Performance safeguard - limit results for browser rendering
         max_results_for_html = 100
-        if len(results) > max_results_for_html:
+        results_limited = len(results) > max_results_for_html
+        if results_limited:
             print(f"WARNING: Limiting HTML report to first {max_results_for_html} results for performance")
             print(f"         Use --max-urls to reduce the number of URLs processed")
             results = results[:max_results_for_html]
@@ -797,10 +755,8 @@ class HTMLReportGenerator:
         from_cache_count = sum(1 for r in results if r.get('from_cache', False))
         fresh_scrape_count = len(results) - from_cache_count
         
-        print(f"DEBUG: Template variables - total_urls: {len(results)}, successful_matches: {successful_matches}")
-        
         return template.render(
-            results=results,  # Use all results for now to see what's happening
+            results=results,
             keywords=keywords,
             days=days,
             total_urls=len(results),
@@ -810,7 +766,7 @@ class HTMLReportGenerator:
             fresh_scrape_count=fresh_scrape_count,
             cache_stats=cache_stats or {},
             generation_time=datetime.now(),
-            results_limited=len(results) >= 100  # Add flag for results limitation
+            results_limited=results_limited
         )
 
 
@@ -1017,12 +973,6 @@ async def main():
     # Generate HTML report for search operations
     print(f"\nGenerating HTML report...")
     
-    # Debug logging before report generation
-    print(f"DEBUG: About to generate report with {len(results)} results")
-    total_matches = sum(len(r.get('matches', [])) for r in results)
-    urls_with_matches = sum(1 for r in results if r.get('matches'))
-    print(f"DEBUG: {total_matches} total matches across {urls_with_matches} URLs")
-    
     generator = HTMLReportGenerator()
     cache_stats = cache.get_cache_stats()
     html_content = generator.generate_report(results, args.keywords, args.days, cache_stats)
@@ -1039,9 +989,6 @@ async def main():
     print(f"  - {matches_found} keyword matches found")
     print(f"  - {len(results)} URLs contained matches")
     print(f"  - Report saved to: {args.output}")
-    
-    # Additional debug info
-    print(f"DEBUG: Summary calculation - matches_found: {matches_found}, len(results): {len(results)}")
 
 
 if __name__ == "__main__":
