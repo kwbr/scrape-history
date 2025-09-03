@@ -14,14 +14,22 @@
 Firefox History Scraper with Content Caching
 
 Extracts URLs from Firefox history, caches scraped content, and generates HTML reports.
-Supports incremental updates and offline keyword searching.
+Supports incremental updates, offline keyword searching, and intelligent exclusion filtering.
+
+Features:
+- Default exclusions for social media, streaming, ads, and non-text content
+- Custom exclusion patterns for domains and file extensions
+- Cross-platform Firefox profile detection
 
 Usage:
-    uvx scrape-history.py --days 7 --exclude github --exclude google "content" "another content"
-    uvx scrape-history.py --search-cache "python" "machine learning"  # Search existing cache
-    uvx scrape-history.py --refresh-cache --days 1  # Refresh recent URLs
-    uvx scrape-history.py --list-profiles  # Show available Firefox profiles
-    uvx scrape-history.py --profile "Work" --days 3 "meeting notes"  # Use specific profile
+    ./scrape-history "python tutorial"                              # Basic search (uses defaults)
+    ./scrape-history --days 30 --exclude "reddit" "machine learning" # Add custom exclusions
+    ./scrape-history --no-default-exclusions "github issue"         # Disable default exclusions
+    ./scrape-history --show-exclusions                             # Show active exclusion patterns
+    ./scrape-history --search-cache "python" "machine learning"    # Search existing cache only
+    ./scrape-history --refresh-cache --days 1                      # Force refresh recent URLs
+    ./scrape-history --list-profiles                               # Show available Firefox profiles
+    ./scrape-history --profile "Work*" --days 3 "meeting notes"    # Use specific profile pattern
 """
 
 import argparse
@@ -49,6 +57,103 @@ from platformdirs import user_cache_dir, user_data_dir
 # Suppress BeautifulSoup encoding warnings
 warnings.filterwarnings("ignore", message="Some characters could not be decoded")
 warnings.filterwarnings("ignore", message=".*REPLACEMENT CHARACTER.*")
+
+
+# Default exclusion patterns
+DEFAULT_DOMAIN_EXCLUSIONS = [
+    # Search engines
+    "google.com", "kagi.com", "bing.com", "duckduckgo.com",
+    
+    # Social media platforms
+    "youtube.com", "twitter.com", "facebook.com", "instagram.com", 
+    "linkedin.com", "tiktok.com", "snapchat.com", "pinterest.com",
+    
+    # Code hosting (user requested GitHub)
+    "github.com",
+    
+    # Streaming services
+    "netflix.com", "disneyplus.com", "hulu.com", "amazon.com/prime",
+    "spotify.com", "apple.com/tv", "hbomax.com", "paramount.com",
+    
+    # E-commerce product pages (common patterns)
+    "amazon.com/dp/", "amazon.com/gp/", "amazon.co.uk/dp/", 
+    "amazon.de/dp/", "amazon.fr/dp/", "amazon.com.au/dp/",
+    "ebay.com/itm/", "etsy.com/listing/",
+    
+    # Online stores/shopping
+    "shopify.com", "woocommerce.com", "bigcommerce.com",
+    
+    # Ad/tracking domains
+    "doubleclick.net", "googletagmanager.com", "googlesyndication.com",
+    "facebook.com/tr", "analytics.google.com",
+]
+
+DEFAULT_FILE_EXTENSION_EXCLUSIONS = [
+    # Images
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico",
+    
+    # Documents that are hard to search meaningfully
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    
+    # Stylesheets and assets
+    ".css", ".scss", ".sass", ".less",
+    
+    # Archives and binaries
+    ".zip", ".tar", ".gz", ".rar", ".7z", ".exe", ".dmg", ".deb", ".rpm",
+    
+    # Media files
+    ".mp3", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4a",
+    
+    # Fonts
+    ".woff", ".woff2", ".ttf", ".otf", ".eot",
+]
+
+
+def get_effective_exclusions(custom_exclusions: List[str], use_defaults: bool = True) -> Dict[str, List[str]]:
+    """Combine default and custom exclusion patterns."""
+    domain_patterns = []
+    extension_patterns = []
+    general_patterns = []
+    
+    # Add defaults if enabled
+    if use_defaults:
+        domain_patterns.extend(DEFAULT_DOMAIN_EXCLUSIONS)
+        extension_patterns.extend(DEFAULT_FILE_EXTENSION_EXCLUSIONS)
+    
+    # Add custom patterns
+    for pattern in custom_exclusions:
+        if pattern.startswith('.'):
+            extension_patterns.append(pattern)
+        else:
+            general_patterns.append(pattern)
+    
+    return {
+        'domains': domain_patterns,
+        'extensions': extension_patterns,
+        'general': general_patterns
+    }
+
+
+def should_exclude_url(url: str, exclusions: Dict[str, List[str]]) -> bool:
+    """Check if URL should be excluded based on exclusion patterns."""
+    url_lower = url.lower()
+    
+    # Check domain patterns
+    for domain in exclusions['domains']:
+        if domain.lower() in url_lower:
+            return True
+    
+    # Check file extension patterns
+    for ext in exclusions['extensions']:
+        if url_lower.endswith(ext.lower()):
+            return True
+    
+    # Check general patterns (legacy behavior)
+    for pattern in exclusions['general']:
+        if pattern.lower() in url_lower:
+            return True
+    
+    return False
 
 
 # Cross-platform utilities (inspired by browserexport)
@@ -267,9 +372,9 @@ class ContentCache:
         conn.commit()
         conn.close()
     
-    def search_cached_content(self, keywords: List[str], exclude_patterns: List[str] = None) -> List[Dict]:
+    def search_cached_content(self, keywords: List[str], exclusions: Dict[str, List[str]] = None) -> List[Dict]:
         """Search through all cached content for keywords."""
-        exclude_patterns = exclude_patterns or []
+        exclusions = exclusions or {'domains': [], 'extensions': [], 'general': []}
         
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -288,8 +393,8 @@ class ContentCache:
         for row in cursor.fetchall():
             url = row['url']
             
-            # Apply exclusion filters
-            if any(pattern.lower() in url.lower() for pattern in exclude_patterns):
+            # Apply exclusion filters using new logic
+            if should_exclude_url(url, exclusions):
                 continue
             
             matches = keyword_searcher.search_content(row['content'], keywords)
@@ -392,7 +497,7 @@ class FirefoxHistoryExtractor:
             except:
                 raise e
     
-    def extract_urls(self, days: int, exclude_patterns: List[str], profile_pattern: str = None) -> List[Dict]:
+    def extract_urls(self, days: int, exclusions: Dict[str, List[str]], profile_pattern: str = None) -> List[Dict]:
         """Extract URLs from Firefox history using profile pattern."""
         db_path = self.get_profile_path(profile_pattern)
         
@@ -417,8 +522,8 @@ class FirefoxHistoryExtractor:
         results = []
         
         for url, title, timestamp, visit_count in cursor.fetchall():
-            # Apply exclusion filters
-            if any(pattern.lower() in url.lower() for pattern in exclude_patterns):
+            # Apply exclusion filters using new logic
+            if should_exclude_url(url, exclusions):
                 continue
             
             results.append({
@@ -440,7 +545,7 @@ class AsyncWebScraper:
         self.semaphore = asyncio.Semaphore(max_concurrent)
         self.client = httpx.AsyncClient(
             timeout=30.0,
-            headers={'User-Agent': 'Mozilla/5.0 (compatible; HistoryScraper/1.0)'},
+            headers={'User-Agent': 'Kai\'s vibecode project'},
             follow_redirects=True
         )
     
@@ -829,7 +934,9 @@ async def main():
     # Common arguments
     parser.add_argument('keywords', nargs='*', help='Keywords to search for (required for search operations)')
     parser.add_argument('--days', type=int, default=7, help='Number of days to look back')
-    parser.add_argument('--exclude', action='append', default=[], help='URL patterns to exclude')
+    parser.add_argument('--exclude', action='append', default=[], help='URL patterns to exclude (in addition to defaults)')
+    parser.add_argument('--no-default-exclusions', action='store_true', help='Disable default exclusion patterns')
+    parser.add_argument('--show-exclusions', action='store_true', help='Show active exclusion patterns and exit')
     parser.add_argument('--output', default='search_results.html', help='Output HTML file')
     parser.add_argument('--max-urls', type=int, default=1000, help='Maximum URLs to process (0 for unlimited)')
     parser.add_argument('--cache-dir', type=Path, help='Cache directory path')
@@ -850,6 +957,27 @@ async def main():
                            help='Force refresh of all URLs and search')
     
     args = parser.parse_args()
+    
+    # Handle show exclusions (no other setup needed)
+    if args.show_exclusions:
+        print("Active Exclusion Patterns:")
+        if not args.no_default_exclusions:
+            print("\nDefault Domain Exclusions:")
+            for pattern in DEFAULT_DOMAIN_EXCLUSIONS:
+                print(f"  - {pattern}")
+            print("\nDefault File Extension Exclusions:")
+            for pattern in DEFAULT_FILE_EXTENSION_EXCLUSIONS:
+                print(f"  - {pattern}")
+        
+        if args.exclude:
+            print("\nCustom Exclusions:")
+            for pattern in args.exclude:
+                print(f"  - {pattern}")
+        
+        if args.no_default_exclusions and not args.exclude:
+            print("  - No exclusion patterns active")
+        
+        return
     
     # Handle profile listing (no cache or keywords needed)
     if args.list_profiles:
@@ -900,6 +1028,15 @@ async def main():
     # Initialize extractor for search operations  
     extractor = FirefoxHistoryExtractor()
     
+    # Prepare exclusion patterns
+    use_defaults = not args.no_default_exclusions
+    exclusions = get_effective_exclusions(args.exclude, use_defaults)
+    
+    # Show exclusion info
+    total_exclusions = len(exclusions['domains']) + len(exclusions['extensions']) + len(exclusions['general'])
+    if total_exclusions > 0:
+        print(f"Using {total_exclusions} exclusion patterns ({len(exclusions['domains'])} domains, {len(exclusions['extensions'])} extensions, {len(exclusions['general'])} custom)")
+    
     # Show profile being used (resolve pattern first)
     try:
         if args.profile:
@@ -918,7 +1055,7 @@ async def main():
     # Handle search operations
     if args.search_cache:
         print(f"Searching cached content for: {', '.join(args.keywords)}")
-        results = cache.search_cached_content(args.keywords, args.exclude)
+        results = cache.search_cached_content(args.keywords, exclusions)
         print(f"Found {len(results)} results in cache")
         
     else:
@@ -928,7 +1065,7 @@ async def main():
         print(f"Extracting URLs from Firefox history for {operation_type} (last {args.days} days)...")
         
         try:
-            urls = extractor.extract_urls(args.days, args.exclude, args.profile)
+            urls = extractor.extract_urls(args.days, exclusions, args.profile)
             print(f"Found {len(urls)} URLs")
             
             if args.max_urls > 0 and len(urls) > args.max_urls:
