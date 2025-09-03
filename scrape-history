@@ -1006,7 +1006,7 @@ async def main():
     parser.add_argument('--no-default-exclusions', action='store_true', help='Disable default exclusion patterns')
     parser.add_argument('--show-exclusions', action='store_true', help='Show active exclusion patterns and exit')
     parser.add_argument('--output', default='search_results.html', help='Output HTML file')
-    parser.add_argument('--max-urls', type=int, default=1000, help='Maximum URLs to process (0 for unlimited)')
+    parser.add_argument('--max-urls', type=int, default=1000, help='Maximum fresh URLs to scrape (cached URLs do not count, 0 for unlimited)')
     parser.add_argument('--cache-dir', type=Path, help='Cache directory path')
     parser.add_argument('--max-cache-age', type=int, default=24, help='Max cache age in hours')
     parser.add_argument('--profile', help='Firefox profile pattern (supports glob: "*", "default*", "work*")')
