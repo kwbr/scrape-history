@@ -826,7 +826,7 @@ class HTMLReportGenerator:
     
     <div class="cache-stats">
         <strong>Cache Status:</strong> 
-        {{ cache_stats.successful_entries }} pages cached | 
+        {{ cache_stats.successful_entries }} pages cached ({{ "%.1f"|format(cache_stats.cache_size_mb) }} MB) | 
         Cache covers {{ cache_stats.oldest_entry }} to {{ cache_stats.newest_entry }}
     </div>
     
@@ -1084,6 +1084,7 @@ async def main():
         print(f"  - Cache location: {cache.cache_dir}")
         print(f"  - Total entries: {stats['total_entries']}")
         print(f"  - Successful entries: {stats['successful_entries']}")
+        print(f"  - Cache size: {stats['cache_size_mb']:.1f} MB")
         if stats['oldest_entry']:
             print(f"  - Date range: {stats['oldest_entry'][:10]} to {stats['newest_entry'][:10]}")
         return
