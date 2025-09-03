@@ -1,0 +1,668 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "httpx>=0.25.0",
+#     "beautifulsoup4>=4.12.0", 
+#     "aiofiles>=23.0.0",
+#     "jinja2>=3.1.0",
+# ]
+# ///
+"""
+Firefox History Scraper with Content Caching
+
+Extracts URLs from Firefox history, caches scraped content, and generates HTML reports.
+Supports incremental updates and offline keyword searching.
+
+Usage:
+    uvx scrape-history.py --days 7 --exclude github --exclude google "content" "another content"
+    uvx scrape-history.py --search-cache "python" "machine learning"  # Search existing cache
+    uvx scrape-history.py --refresh-cache --days 1  # Refresh recent URLs
+    uvx scrape-history.py --list-profiles  # Show available Firefox profiles
+    uvx scrape-history.py --profile "Work" --days 3 "meeting notes"  # Use specific profile
+"""
+
+import argparse
+import sqlite3
+import asyncio
+import re
+import hashlib
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+from urllib.parse import urlparse
+from typing import List, Dict, Set, Optional
+import platform
+import os
+
+import httpx
+from bs4 import BeautifulSoup
+import aiofiles
+from jinja2 import Template
+
+
+class ContentCache:
+    """Persistent cache for scraped web content."""
+    
+    def __init__(self, cache_dir: Path = None):
+        self.cache_dir = cache_dir or Path.home() / ".scrape_history_cache"
+        self.cache_dir.mkdir(exist_ok=True)
+        self.db_path = self.cache_dir / "content_cache.db"
+        self._init_db()
+    
+    def _init_db(self):
+        """Initialize cache database."""
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS cached_content (
+                url_hash TEXT PRIMARY KEY,
+                url TEXT NOT NULL,
+                title TEXT,
+                content TEXT,
+                scraped_at TIMESTAMP,
+                content_hash TEXT,
+                status TEXT,
+                error_message TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_url ON cached_content(url);
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_scraped_at ON cached_content(scraped_at);
+        """)
+        conn.commit()
+        conn.close()
+    
+    def _url_hash(self, url: str) -> str:
+        """Generate hash for URL."""
+        return hashlib.md5(url.encode()).hexdigest()
+    
+    def _content_hash(self, content: str) -> str:
+        """Generate hash for content."""
+        return hashlib.md5(content.encode()).hexdigest()
+    
+    def get_cached_content(self, url: str, max_age_hours: int = 24) -> Optional[Dict]:
+        """Get cached content if it exists and is fresh enough."""
+        url_hash = self._url_hash(url)
+        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM cached_content 
+            WHERE url_hash = ? AND scraped_at > ?
+        """, (url_hash, cutoff_time))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'url': row['url'],
+                'title': row['title'],
+                'content': row['content'],
+                'scraped_at': datetime.fromisoformat(row['scraped_at']),
+                'status': row['status'],
+                'error': row['error_message'],
+                'from_cache': True
+            }
+        
+        return None
+    
+    def cache_content(self, url: str, title: str, content: str, status: str, error: str = None):
+        """Store content in cache."""
+        url_hash = self._url_hash(url)
+        content_hash = self._content_hash(content) if content else None
+        
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("""
+            INSERT OR REPLACE INTO cached_content 
+            (url_hash, url, title, content, scraped_at, content_hash, status, error_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (url_hash, url, title, content, datetime.now().isoformat(), 
+              content_hash, status, error))
+        conn.commit()
+        conn.close()
+    
+    def search_cached_content(self, keywords: List[str], exclude_patterns: List[str] = None) -> List[Dict]:
+        """Search through all cached content for keywords."""
+        exclude_patterns = exclude_patterns or []
+        
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT url, title, content, scraped_at, status
+            FROM cached_content 
+            WHERE status = 'success' AND content IS NOT NULL
+            ORDER BY scraped_at DESC
+        """)
+        
+        results = []
+        keyword_searcher = KeywordSearcher()
+        
+        for row in cursor.fetchall():
+            url = row['url']
+            
+            # Apply exclusion filters
+            if any(pattern.lower() in url.lower() for pattern in exclude_patterns):
+                continue
+            
+            matches = keyword_searcher.search_content(row['content'], keywords)
+            if matches:
+                results.append({
+                    'url': url,
+                    'title': row['title'],
+                    'visited': datetime.fromisoformat(row['scraped_at']),
+                    'matches': matches,
+                    'status': 'success',
+                    'from_cache': True
+                })
+        
+        conn.close()
+        return results
+    
+    def get_cache_stats(self) -> Dict:
+        """Get cache statistics."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) FROM cached_content")
+        total_entries = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM cached_content WHERE status = 'success'")
+        successful_entries = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT MIN(scraped_at), MAX(scraped_at) FROM cached_content")
+        min_date, max_date = cursor.fetchone()
+        
+        conn.close()
+        
+        return {
+            'total_entries': total_entries,
+            'successful_entries': successful_entries,
+            'oldest_entry': min_date,
+            'newest_entry': max_date
+        }
+    
+    def clean_old_entries(self, days: int = 30):
+        """Remove entries older than specified days."""
+        cutoff_time = datetime.now() - timedelta(days=days)
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM cached_content WHERE scraped_at < ?", 
+                      (cutoff_time.isoformat(),))
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        return deleted
+
+
+class FirefoxHistoryExtractor:
+    """Extract URLs from Firefox history database."""
+    
+    def get_firefox_profile_path(self) -> Path:
+        """Find Firefox profile directory based on OS."""
+        system = platform.system()
+        
+        if system == "Windows":
+            base_path = Path.home() / "AppData" / "Roaming" / "Mozilla" / "Firefox" / "Profiles"
+        elif system == "Darwin":  # macOS
+            base_path = Path.home() / "Library" / "Application Support" / "Firefox" / "Profiles"
+        else:  # Linux
+            base_path = Path.home() / ".mozilla" / "firefox"
+        
+        if not base_path.exists():
+            raise FileNotFoundError(f"Firefox profile directory not found at {base_path}")
+        
+        # Find the default profile (usually ends with .default-release)
+        profiles = list(base_path.glob("*.default*"))
+        if not profiles:
+            raise FileNotFoundError("No Firefox profile found")
+        
+        return profiles[0] / "places.sqlite"
+    
+    def extract_urls(self, days: int, exclude_patterns: List[str]) -> List[Dict]:
+        """Extract URLs from Firefox history."""
+        db_path = self.get_firefox_profile_path()
+        
+        if not db_path.exists():
+            raise FileNotFoundError(f"Firefox database not found at {db_path}")
+        
+        # Calculate date threshold
+        since_date = datetime.now() - timedelta(days=days)
+        since_timestamp = int(since_date.timestamp() * 1_000_000)  # Firefox uses microseconds
+        
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        cursor = conn.cursor()
+        
+        query = """
+        SELECT DISTINCT url, title, last_visit_date, visit_count
+        FROM moz_places 
+        WHERE last_visit_date > ? 
+        AND url NOT LIKE 'about:%'
+        AND url NOT LIKE 'moz-extension:%'
+        AND visit_count > 0
+        ORDER BY last_visit_date DESC
+        """
+        
+        cursor.execute(query, (since_timestamp,))
+        results = []
+        
+        for url, title, timestamp, visit_count in cursor.fetchall():
+            # Apply exclusion filters
+            if any(pattern.lower() in url.lower() for pattern in exclude_patterns):
+                continue
+            
+            results.append({
+                'url': url,
+                'title': title or url,
+                'visited': datetime.fromtimestamp(timestamp / 1_000_000),
+                'visit_count': visit_count
+            })
+        
+        conn.close()
+        return results
+
+
+class AsyncWebScraper:
+    """Async web scraper with caching."""
+    
+    def __init__(self, cache: ContentCache, max_concurrent: int = 10):
+        self.cache = cache
+        self.semaphore = asyncio.Semaphore(max_concurrent)
+        self.client = httpx.AsyncClient(
+            timeout=30.0,
+            headers={'User-Agent': 'Mozilla/5.0 (compatible; HistoryScraper/1.0)'},
+            follow_redirects=True
+        )
+    
+    async def scrape_url(self, url: str, use_cache: bool = True, max_cache_age_hours: int = 24) -> Dict:
+        """Scrape a URL, using cache when possible."""
+        
+        # Try cache first
+        if use_cache:
+            cached = self.cache.get_cached_content(url, max_cache_age_hours)
+            if cached:
+                return cached
+        
+        # Scrape fresh content
+        async with self.semaphore:
+            try:
+                response = await self.client.get(url)
+                response.raise_for_status()
+                
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Remove script and style elements
+                for script in soup(["script", "style", "nav", "header", "footer", ".advertisement"]):
+                    script.decompose()
+                
+                # Extract text content
+                text = soup.get_text()
+                lines = (line.strip() for line in text.splitlines())
+                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                text = ' '.join(chunk for chunk in chunks if chunk)
+                
+                title = soup.title.string if soup.title else ''
+                
+                # Cache the successful result
+                self.cache.cache_content(url, title, text, 'success')
+                
+                return {
+                    'url': url,
+                    'title': title,
+                    'content': text,
+                    'status': 'success',
+                    'from_cache': False
+                }
+                
+            except Exception as e:
+                error_msg = str(e)
+                
+                # Cache the error (with empty content)
+                self.cache.cache_content(url, '', '', 'error', error_msg)
+                
+                return {
+                    'url': url,
+                    'title': '',
+                    'content': '',
+                    'status': 'error',
+                    'error': error_msg,
+                    'from_cache': False
+                }
+    
+    async def close(self):
+        await self.client.aclose()
+
+
+class KeywordSearcher:
+    """Search for keywords in scraped content."""
+    
+    def search_content(self, content: str, keywords: List[str]) -> List[Dict]:
+        """Find keyword matches with context."""
+        matches = []
+        
+        for keyword in keywords:
+            # Support both exact and fuzzy matching
+            pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+            
+            for match in pattern.finditer(content):
+                start = max(0, match.start() - 200)
+                end = min(len(content), match.end() + 200)
+                context = content[start:end].strip()
+                
+                # Clean up context
+                context = re.sub(r'\s+', ' ', context)
+                
+                matches.append({
+                    'keyword': keyword,
+                    'context': context,
+                    'position': match.start()
+                })
+        
+        return matches
+
+
+class HTMLReportGenerator:
+    """Generate HTML report with search results."""
+    
+    HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firefox History Search Results</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .cache-stats { background: #e8f4fd; padding: 10px; border-radius: 5px; font-size: 14px; margin-bottom: 20px; }
+        .result { border: 1px solid #ddd; margin-bottom: 20px; border-radius: 5px; }
+        .result-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; }
+        .result-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .result-url { color: #666; font-size: 14px; word-break: break-all; }
+        .matches { padding: 15px; }
+        .match { background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .keyword { background: #ffc107; padding: 2px 4px; border-radius: 2px; font-weight: bold; }
+        .error { color: #dc3545; font-style: italic; }
+        .meta { color: #6c757d; font-size: 12px; }
+        .cache-indicator { 
+            display: inline-block; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-size: 11px; 
+            font-weight: bold;
+        }
+        .cached { background: #d4edda; color: #155724; }
+        .fresh { background: #cce5ff; color: #004085; }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { padding: 8px; width: 300px; margin-right: 10px; }
+        .search-box button { padding: 8px 15px; }
+        
+        /* Search highlighting */
+        .highlight { background: #ffeb3b; padding: 1px 2px; }
+    </style>
+    <script>
+        function highlightKeywords() {
+            const keywords = {{ keywords | tojson }};
+            const results = document.querySelectorAll('.match');
+            
+            results.forEach(result => {
+                let html = result.innerHTML;
+                keywords.forEach(keyword => {
+                    const regex = new RegExp(`(${keyword})`, 'gi');
+                    html = html.replace(regex, '<span class="highlight">$1</span>');
+                });
+                result.innerHTML = html;
+            });
+        }
+        
+        function filterResults() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const results = document.querySelectorAll('.result');
+            
+            results.forEach(result => {
+                const text = result.textContent.toLowerCase();
+                result.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+        
+        window.onload = function() {
+            highlightKeywords();
+        }
+    </script>
+</head>
+<body>
+    <h1>Firefox History Search Results</h1>
+    
+    <div class="cache-stats">
+        <strong>Cache Status:</strong> 
+        {{ cache_stats.successful_entries }} pages cached | 
+        Cache covers {{ cache_stats.oldest_entry }} to {{ cache_stats.newest_entry }}
+    </div>
+    
+    <div class="summary">
+        <strong>Search Summary:</strong><br>
+        Keywords: {{ keywords | join(', ') }}<br>
+        {% if days %}Time period: Last {{ days }} days<br>{% endif %}
+        URLs processed: {{ total_urls }}<br>
+        URLs with matches: {{ successful_matches }}<br>
+        Failed scrapes: {{ failed_scrapes }}<br>
+        From cache: {{ from_cache_count }} | Fresh scrapes: {{ fresh_scrape_count }}
+    </div>
+    
+    <div class="search-box">
+        <input type="text" id="search" placeholder="Filter results..." onkeyup="filterResults()">
+        <button onclick="filterResults()">Filter</button>
+    </div>
+    
+    {% for result in results %}
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="{{ result.url }}" target="_blank">{{ result.title or result.url }}</a>
+                {% if result.from_cache %}
+                <span class="cache-indicator cached">CACHED</span>
+                {% else %}
+                <span class="cache-indicator fresh">FRESH</span>
+                {% endif %}
+            </div>
+            <div class="result-url">{{ result.url }}</div>
+            <div class="meta">
+                {% if result.visited %}Visited: {{ result.visited.strftime('%Y-%m-%d %H:%M') }} | {% endif %}
+                Scraped: {{ result.get('scraped_at', 'Unknown') }}
+            </div>
+        </div>
+        
+        {% if result.status == 'error' %}
+        <div class="matches">
+            <div class="error">Failed to scrape: {{ result.get('error', 'Unknown error') }}</div>
+        </div>
+        {% elif result.matches %}
+        <div class="matches">
+            {% for match in result.matches %}
+            <div class="match">
+                <strong>Found "{{ match.keyword }}":</strong><br>
+                {{ match.context }}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="matches">
+            <div class="meta">No keyword matches found</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    
+    <div class="meta">
+        Generated on {{ generation_time.strftime('%Y-%m-%d %H:%M:%S') }}
+    </div>
+</body>
+</html>
+    """
+    
+    def generate_report(self, results: List[Dict], keywords: List[str], days: int = None, cache_stats: Dict = None) -> str:
+        """Generate HTML report from search results."""
+        template = Template(self.HTML_TEMPLATE)
+        
+        successful_matches = sum(1 for r in results if r['matches'])
+        failed_scrapes = sum(1 for r in results if r['status'] == 'error')
+        from_cache_count = sum(1 for r in results if r.get('from_cache', False))
+        fresh_scrape_count = len(results) - from_cache_count
+        
+        return template.render(
+            results=results,
+            keywords=keywords,
+            days=days,
+            total_urls=len(results),
+            successful_matches=successful_matches,
+            failed_scrapes=failed_scrapes,
+            from_cache_count=from_cache_count,
+            fresh_scrape_count=fresh_scrape_count,
+            cache_stats=cache_stats or {},
+            generation_time=datetime.now()
+        )
+
+
+async def scrape_and_cache_urls(urls: List[Dict], cache: ContentCache, 
+                              force_refresh: bool = False, max_cache_age_hours: int = 24) -> List[Dict]:
+    """Scrape URLs using cache when possible."""
+    scraper = AsyncWebScraper(cache)
+    results = []
+    
+    for i, url_data in enumerate(urls, 1):
+        url = url_data['url']
+        print(f"Processing {i}/{len(urls)}: {url[:80]}...")
+        
+        # Check cache age override
+        use_cache = not force_refresh
+        scraped = await scraper.scrape_url(url, use_cache, max_cache_age_hours)
+        
+        cache_status = "💾" if scraped.get('from_cache') else "🌐"
+        status = scraped['status']
+        
+        print(f"  {cache_status} {status}")
+        
+        # Add matches if we have keywords to search for
+        results.append({
+            **url_data,
+            **scraped
+        })
+    
+    await scraper.close()
+    return results
+
+
+async def main():
+    """Main application logic."""
+    parser = argparse.ArgumentParser(description='Firefox history scraper with caching')
+    parser.add_argument('keywords', nargs='*', help='Keywords to search for')
+    parser.add_argument('--days', type=int, default=7, help='Number of days to look back')
+    parser.add_argument('--exclude', action='append', default=[], help='URL patterns to exclude')
+    parser.add_argument('--output', default='search_results.html', help='Output HTML file')
+    parser.add_argument('--max-urls', type=int, default=100, help='Maximum URLs to process')
+    parser.add_argument('--cache-dir', type=Path, help='Cache directory path')
+    parser.add_argument('--max-cache-age', type=int, default=24, help='Max cache age in hours')
+    parser.add_argument('--profile', help='Firefox profile name or directory')
+    
+    # Cache management options
+    parser.add_argument('--search-cache', action='store_true', help='Search only cached content')
+    parser.add_argument('--refresh-cache', action='store_true', help='Force refresh of all URLs')
+    parser.add_argument('--cache-stats', action='store_true', help='Show cache statistics')
+    parser.add_argument('--clean-cache', type=int, metavar='DAYS', help='Remove cache entries older than DAYS')
+    parser.add_argument('--list-profiles', action='store_true', help='List available Firefox profiles')
+    
+    args = parser.parse_args()
+    
+    # Initialize cache
+    cache = ContentCache(args.cache_dir)
+    
+    # Handle cache management commands
+    if args.cache_stats:
+        stats = cache.get_cache_stats()
+        print("📊 Cache Statistics:")
+        print(f"  • Total entries: {stats['total_entries']}")
+        print(f"  • Successful entries: {stats['successful_entries']}")
+        print(f"  • Date range: {stats['oldest_entry']} to {stats['newest_entry']}")
+        return
+    
+    if args.clean_cache:
+        deleted = cache.clean_old_entries(args.clean_cache)
+        print(f"🧹 Cleaned {deleted} old cache entries")
+        return
+    
+    if not args.keywords:
+        print("❌ No keywords provided. Use --help for usage.")
+        return
+    
+    # Search cached content only
+    if args.search_cache:
+        print(f"🔍 Searching cached content for: {', '.join(args.keywords)}")
+        results = cache.search_cached_content(args.keywords, args.exclude)
+        print(f"Found {len(results)} results in cache")
+        
+    else:
+        # Extract URLs from Firefox history
+        print(f"📚 Extracting URLs from Firefox history (last {args.days} days)...")
+        extractor = FirefoxHistoryExtractor()
+        
+        try:
+            urls = extractor.extract_urls(args.days, args.exclude)
+            print(f"Found {len(urls)} URLs")
+            
+            if len(urls) > args.max_urls:
+                urls = urls[:args.max_urls]
+                print(f"Limited to {args.max_urls} most recent URLs")
+            
+        except FileNotFoundError as e:
+            print(f"❌ Error: {e}")
+            return
+        
+        # Scrape URLs (using cache when possible)
+        print(f"\n🕷️  Processing {len(urls)} URLs...")
+        scraped_results = await scrape_and_cache_urls(
+            urls, cache, args.refresh_cache, args.max_cache_age
+        )
+        
+        # Search for keywords in scraped content
+        print(f"\n🔍 Searching for keywords: {', '.join(args.keywords)}")
+        keyword_searcher = KeywordSearcher()
+        
+        results = []
+        for result in scraped_results:
+            if result['status'] == 'success' and result['content']:
+                matches = keyword_searcher.search_content(result['content'], args.keywords)
+                if matches:  # Only include results with matches
+                    result['matches'] = matches
+                    results.append(result)
+    
+    # Generate HTML report
+    print(f"\n📄 Generating HTML report...")
+    generator = HTMLReportGenerator()
+    cache_stats = cache.get_cache_stats()
+    html_content = generator.generate_report(results, args.keywords, args.days, cache_stats)
+    
+    # Write report
+    async with aiofiles.open(args.output, 'w', encoding='utf-8') as f:
+        await f.write(html_content)
+    
+    # Summary
+    matches_found = sum(len(r['matches']) for r in results)
+    
+    print(f"\n✅ Complete!")
+    print(f"📊 Summary:")
+    print(f"  • {matches_found} keyword matches found")
+    print(f"  • {len(results)} URLs contained matches")
+    print(f"  • Report saved to: {args.output}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
