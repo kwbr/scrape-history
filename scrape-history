@@ -940,13 +940,19 @@ async def scrape_and_cache_urls(urls: List[Dict], cache: ContentCache,
     error_count = 0
     success_count = 0
     
+    # Create all scraping tasks at once for parallel execution
+    tasks = {}
+    for url_data in urls:
+        url = url_data['url']
+        use_cache = not force_refresh
+        task = asyncio.create_task(scraper.scrape_url(url, use_cache, max_cache_age_hours))
+        tasks[task] = url_data
+    
+    # Process completed tasks as they finish (up to max_concurrent at a time)
     with tqdm(total=len(urls), desc="Scraping URLs", unit="url") as pbar:
-        for url_data in urls:
-            url = url_data['url']
-            
-            # Check cache age override
-            use_cache = not force_refresh
-            scraped = await scraper.scrape_url(url, use_cache, max_cache_age_hours)
+        for task in asyncio.as_completed(tasks):
+            scraped = await task
+            url_data = tasks[task]
             
             if scraped.get('from_cache'):
                 cached_count += 1
