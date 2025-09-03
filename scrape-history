@@ -1155,9 +1155,35 @@ async def main():
             urls = extractor.extract_urls(args.days, patterns, args.profile)
             print(f"Found {len(urls)} URLs")
             
-            if args.max_urls > 0 and len(urls) > args.max_urls:
-                urls = urls[:args.max_urls]
-                print(f"Limited to {args.max_urls} most recent URLs")
+            # Apply max_urls limit only to fresh URLs (cached URLs don't count)
+            if args.max_urls > 0:
+                filtered_urls = []
+                fresh_count = 0
+                cached_count = 0
+                
+                for url_data in urls:
+                    url = url_data['url']
+                    use_cache = not force_refresh
+                    
+                    # Check if URL is in cache and fresh enough
+                    if use_cache and cache.get_cached_content(url, args.max_cache_age):
+                        # Cached URL - always include, doesn't count toward limit
+                        filtered_urls.append(url_data)
+                        cached_count += 1
+                    else:
+                        # Fresh URL - only include if under limit
+                        if fresh_count < args.max_urls:
+                            filtered_urls.append(url_data)
+                            fresh_count += 1
+                        # else: skip this URL because we've hit the fresh URL limit
+                
+                if fresh_count >= args.max_urls and len(urls) > len(filtered_urls):
+                    skipped = len(urls) - len(filtered_urls)
+                    print(f"Limited to {args.max_urls} fresh URLs (keeping {cached_count} cached, skipping {skipped})")
+                elif cached_count > 0:
+                    print(f"Processing {fresh_count} fresh + {cached_count} cached URLs")
+                
+                urls = filtered_urls
             
         except FileNotFoundError as e:
             print(f"Error: {e}")
