@@ -850,11 +850,6 @@ class HTMLReportGenerator:
     
     <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
         Displaying <span id="visible-count">{{ results|length }}</span> of {{ results|length }} results
-        {% if results_limited %}
-        <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">
-            ⚠️ Results limited to 100 for performance. Use --max-urls to reduce total URLs processed.
-        </div>
-        {% endif %}
     </div>
     
     {% for result in results %}
