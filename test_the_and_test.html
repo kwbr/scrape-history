@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firefox History Search Results</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .cache-stats { background: #e8f4fd; padding: 10px; border-radius: 5px; font-size: 14px; margin-bottom: 20px; }
+        .result { border: 1px solid #ddd; margin-bottom: 20px; border-radius: 5px; }
+        .result-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; }
+        .result-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .result-url { color: #666; font-size: 14px; word-break: break-all; }
+        .matches { padding: 15px; }
+        .match { background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .keyword { background: #ffc107; padding: 2px 4px; border-radius: 2px; font-weight: bold; }
+        .error { color: #dc3545; font-style: italic; }
+        .meta { color: #6c757d; font-size: 12px; }
+        .cache-indicator { 
+            display: inline-block; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-size: 11px; 
+            font-weight: bold;
+        }
+        .cached { background: #d4edda; color: #155724; }
+        .fresh { background: #cce5ff; color: #004085; }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { padding: 8px; width: 300px; margin-right: 10px; }
+        .search-box button { padding: 8px 15px; }
+        
+        /* Search highlighting */
+        .highlight { background: #ffeb3b; padding: 1px 2px; }
+    </style>
+    <script>
+        function highlightKeywords() {
+            try {
+                const keywords = ["the test"];
+                const results = document.querySelectorAll('.match');
+                
+                results.forEach((result, index) => {
+                    let html = result.innerHTML;
+                    keywords.forEach(keyword => {
+                        // Escape special regex characters
+                        const escapedKeyword = keyword.replace(/[.*+?^${}()|\[\]\\]/g, '\$&');
+                        const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+                        html = html.replace(regex, '<span class="highlight">$1</span>');
+                    });
+                    result.innerHTML = html;
+                });
+            } catch (error) {
+                console.error('Error during keyword highlighting:', error);
+            }
+        }
+        
+        function filterResults() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const results = document.querySelectorAll('.result');
+            let visibleCount = 0;
+            
+            results.forEach(result => {
+                const text = result.textContent.toLowerCase();
+                const isVisible = text.includes(searchTerm);
+                result.style.display = isVisible ? 'block' : 'none';
+                if (isVisible) visibleCount++;
+            });
+            
+            // Update visible count
+            document.getElementById('visible-count').textContent = visibleCount;
+        }
+        
+        function toggleHighlighting() {
+            const checkbox = document.getElementById('enable-highlighting');
+            if (checkbox.checked) {
+                highlightKeywords();
+            } else {
+                // Remove highlighting
+                document.querySelectorAll('.highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
+            }
+        }
+        
+        window.onload = function() {
+            try {
+                // Set up highlighting toggle
+                document.getElementById('enable-highlighting').addEventListener('change', toggleHighlighting);
+                
+                // Initial highlighting
+                highlightKeywords();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Firefox History Search Results</h1>
+    
+    <div class="cache-stats">
+        <strong>Cache Status:</strong> 
+        408 pages cached (5.5 MB) | 
+        Cache covers 2025-09-03T19:52:56.519266 to 2025-09-04T10:27:01.252634
+    </div>
+    
+    <div class="summary">
+        <strong>Search Summary:</strong><br>
+        Keywords: the test<br>
+        Time period: Last 7 days<br>
+        URLs processed: 5<br>
+        URLs with matches: 5<br>
+        Failed scrapes: 0<br>
+        From cache: 5 | Fresh scrapes: 0
+    </div>
+    
+    <div class="search-box">
+        <input type="text" id="search" placeholder="Filter results..." onkeyup="filterResults()">
+        <button onclick="filterResults()">Filter</button>
+        <label><input type="checkbox" id="enable-highlighting" checked> Enable keyword highlighting</label>
+    </div>
+    
+    
+    <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
+        Displaying <span id="visible-count">5</span> of 5 results
+    </div>
+    
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://docs.anthropic.com/en/docs/claude-code/sub-agents" target="_blank">Subagents - Anthropic</a>
+                
+                <span class="cache-indicator cached">CACHED</span>
+                
+            </div>
+            <div class="result-url">https://docs.anthropic.com/en/docs/claude-code/sub-agents</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:55 | 
+                Scraped: 2025-09-04 07:41:29.793124
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                se PROACTIVELY” or “MUST BE USED” in your description field. ​Explicit invocation Request a specific subagent by mentioning it in your command: > Use the test-runner subagent to fix failing tests > Have the code-reviewer subagent look at my recent changes > Ask the debugger subagent to investigate t...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://blog.wilsonl.in/search-engine/" target="_blank">Building a web search engine from scratch in two months with 3 billion neural embeddings</a>
+                
+                <span class="cache-indicator cached">CACHED</span>
+                
+            </div>
+            <div class="result-url">https://blog.wilsonl.in/search-engine/</div>
+            <div class="meta">
+                Visited: 2025-09-02 08:07 | 
+                Scraped: 2025-09-04 07:40:42.182494
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                rove the concept: Grow set of gathered diverse raw web pages. Parse, normalize, augment, and embed them into a queryable HNSW index. Build and expand the test dataset of queries as I crawl, debug, experiment, and eval. Create a UI to introspect data at each stage, see failure points, and tune. Norma...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://martinfowler.com/articles/domain-oriented-observability.html#TestingObservability" target="_blank">Domain-Oriented Observability</a>
+                
+                <span class="cache-indicator cached">CACHED</span>
+                
+            </div>
+            <div class="result-url">https://martinfowler.com/articles/domain-oriented-observability.html#TestingObservability</div>
+            <div class="meta">
+                Visited: 2025-09-01 13:26 | 
+                Scraped: 2025-09-03 19:54:52.848200
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                cerned with the exact details of what was logged, just that something was logged with the correct contextual data. We could try to reduce how tightly the test is coupled to the details of the log message format by matching against a regular expression (regex) instead of an exact string. However, thi...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                ill look remarkably similar to this one. Each test will need to go through the same fiddly dependency setup work, even though that's not the focus of the test. When confronted with this task, some developers would grit their teeth, copy and paste the existing test, change what needs to be changed, a...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                tation is not always immediately apparent). Domain Probes Enable Cleaner, More-Focused Tests Let's see how using the Domain Probe pattern can improve the testing story. Here's our ShoppingCart again, now refactored to use a Domain Probe: class ShoppingCart… addToCart(productId){ this.instrumentation...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                ctId); this.products.push(product); this.recalculateTotals(); this.instrumentation.addedProductToCart({ product:product, cart:this }); } And here are the tests for the instrumentation of addToCart: shoppingCart.test.js const sinon = require('sinon'); describe('addToCart', () => { // ... it('instrume...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                .spy(), addedProductToCart: sinon.spy() }; } }); The introduction of a Domain Probe has raised the level of abstraction a little, making the code and the tests a bit easier to read as well as less brittle. We're still testing that instrumentation has been implemented correctly—in fact, our tests now...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                mation in our instrumentation can be a costly mistake. Our ShoppingCartInstrumentation Domain Probe is responsible for implementing these details, so the tests for that class are the natural place to verify that we get these details correct: ShoppingCartInstrumentation.test.js const sinon = require(...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                test verifies that one specific part of our low-level technical instrumentation is correctly triggered as part of a higher-level Domain Observation. The tests capture the intent of the Domain Probe: presenting a domain-specific abstraction over the boring technical details of our various instrumenta...
+            </div>
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                Software Guided by Tests. Specifically, the “Logging Is a Feature” section in Chapter 20 discusses raising logging up to a domain-level concern, and the testability advantages that brings. I think either Andrew Kiellor or Toby Clemson first showed me how to apply an approach similar to Domain Probe ...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://stackoverflow.com/questions/953481/how-do-i-find-and-restore-a-deleted-file-in-a-git-repository" target="_blank">How do I find and restore a deleted file in a Git repository? - Stack Overflow</a>
+                
+                <span class="cache-indicator cached">CACHED</span>
+                
+            </div>
+            <div class="result-url">https://stackoverflow.com/questions/953481/how-do-i-find-and-restore-a-deleted-file-in-a-git-repository</div>
+            <div class="meta">
+                Visited: 2025-09-01 12:16 | 
+                Scraped: 2025-09-03 19:55:03.791600
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                will return 0 if foo.bar exists, and 1 otherwise. The "run" command of git-bisect will use binary search to automatically find the first commit where the test fails. It starts halfway through the range given (from good to bad) and cuts it in half based on the result of the specified test. git bisect...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://news.ycombinator.com/item?id=45074248" target="_blank">Cognitive load is what matters | Hacker News</a>
+                
+                <span class="cache-indicator cached">CACHED</span>
+                
+            </div>
+            <div class="result-url">https://news.ycombinator.com/item?id=45074248</div>
+            <div class="meta">
+                Visited: 2025-08-31 15:25 | 
+                Scraped: 2025-09-04 07:22:22.223732
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "the test":</strong><br>
+                ide seems that yes, it could make refactoring easier. Downside, though, is not knowing where certain tests live. The command+shift+T shortcut to open the test file corresponding to a production code file is very useful to me, too.Thanks, I'll have a think about itreplysmallnamespace 3 days ago | roo...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    
+    <div class="meta">
+        Generated on 2025-09-04 10:27:01
+    </div>
+</body>
+</html>
+    
