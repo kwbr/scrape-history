@@ -141,6 +141,40 @@ def get_effective_patterns(custom_exclusions: List[str], custom_inclusions: List
     }
 
 
+def deduplicate_results_by_url(results: List[Dict]) -> List[Dict]:
+    """
+    Deduplicate search results by URL, keeping the result with the most recent visit date.
+    
+    Args:
+        results: List of result dictionaries with 'url', 'visited', and other fields
+        
+    Returns:
+        List of deduplicated results, sorted by most recent visit date
+    """
+    if not results:
+        return results
+    
+    # Group results by URL
+    url_groups = {}
+    for result in results:
+        url = result['url']
+        if url not in url_groups:
+            url_groups[url] = []
+        url_groups[url].append(result)
+    
+    # For each URL, keep the result with the most recent visit date
+    deduplicated = []
+    for url, url_results in url_groups.items():
+        # Sort by visit date (most recent first) and take the first one
+        most_recent = max(url_results, key=lambda r: r.get('visited', datetime.min))
+        deduplicated.append(most_recent)
+    
+    # Sort final results by visit date (most recent first)
+    deduplicated.sort(key=lambda r: r.get('visited', datetime.min), reverse=True)
+    
+    return deduplicated
+
+
 def should_exclude_url(url: str, patterns: Dict[str, Dict[str, List[str]]]) -> bool:
     """Check if URL should be excluded based on exclusion/inclusion patterns."""
     url_lower = url.lower()
@@ -1133,6 +1167,9 @@ async def main():
         results = cache.search_cached_content(args.keywords, patterns)
         print(f"Found {len(results)} results in cache")
         
+        # Deduplicate cache results by URL  
+        results = deduplicate_results_by_url(results)
+        
     else:
         # Regular operation (default) or refresh cache mode
         force_refresh = args.refresh_cache
@@ -1207,6 +1244,9 @@ async def main():
                     matches_found += 1
                 
                 pbar.set_postfix({'matches': matches_found})
+    
+    # Deduplicate results by URL, keeping most recent visit date
+    results = deduplicate_results_by_url(results)
     
     # Generate HTML report for search operations
     print(f"\nGenerating HTML report...")
