@@ -458,8 +458,8 @@ class ContentCache:
         conn.commit()
         conn.close()
     
-    def search_cached_content(self, keywords: List[str], patterns: Dict[str, Dict[str, List[str]]] = None) -> List[Dict]:
-        """Search through all cached content for keywords."""
+    def search_cached_content(self, keywords: List[str], patterns: Dict[str, Dict[str, List[str]]] = None, firefox_profile: str = None) -> List[Dict]:
+        """Search through all cached content for keywords, preserving original Firefox visit dates."""
         patterns = patterns or {'exclusions': {'domains': [], 'extensions': [], 'general': []}, 'inclusions': {'domains': [], 'extensions': [], 'general': []}}
         
         conn = sqlite3.connect(self.db_path)
@@ -473,6 +473,16 @@ class ContentCache:
             ORDER BY scraped_at DESC
         """)
         
+        # Get Firefox history to preserve original visit dates
+        firefox_urls = {}
+        try:
+            extractor = FirefoxHistoryExtractor()
+            # Get all Firefox URLs from a longer time period to catch visit dates
+            ff_results = extractor.extract_urls(days=365, patterns=patterns, profile=firefox_profile)
+            firefox_urls = {result['url']: result['visited'] for result in ff_results}
+        except Exception as e:
+            print(f"Warning: Could not load Firefox history for visit dates: {e}")
+        
         results = []
         keyword_searcher = KeywordSearcher()
         
@@ -485,10 +495,15 @@ class ContentCache:
             
             matches = keyword_searcher.search_content(row['content'], keywords)
             if matches:
+                # Use original Firefox visit date if available, fallback to scrape date
+                visited_date = firefox_urls.get(url)
+                if visited_date is None:
+                    visited_date = datetime.fromisoformat(row['scraped_at'])
+                
                 results.append({
                     'url': url,
                     'title': row['title'],
-                    'visited': datetime.fromisoformat(row['scraped_at']),
+                    'visited': visited_date,
                     'matches': matches,
                     'status': 'success',
                     'from_cache': True
