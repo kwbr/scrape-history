@@ -544,7 +544,7 @@ class ContentCache:
         try:
             extractor = FirefoxHistoryExtractor()
             # Get all Firefox URLs from a longer time period to catch visit dates
-            ff_results = extractor.extract_urls(days=365, patterns=patterns, profile=firefox_profile)
+            ff_results = extractor.extract_urls(days=365, patterns=patterns, profile_pattern=firefox_profile)
             firefox_urls = {result['url']: result['visited'] for result in ff_results}
         except Exception as e:
             print(f"Warning: Could not load Firefox history for visit dates: {e}")
@@ -564,7 +564,7 @@ class ContentCache:
                 # Use original Firefox visit date if available, fallback to scrape date
                 visited_date = firefox_urls.get(url)
                 if visited_date is None:
-                    visited_date = datetime.fromisoformat(row['scraped_at'])
+                    visited_date = normalize_datetime(row['scraped_at'])
                 
                 results.append({
                     'url': url,
