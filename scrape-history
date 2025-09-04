@@ -799,13 +799,21 @@ class KeywordSearcher:
     """Search for keywords in scraped content."""
     
     def search_content(self, content: str, keywords: List[str], max_context_length: int = 300, max_matches_per_keyword: int = 10) -> List[Dict]:
-        """Find keyword matches with context."""
+        """Find keyword matches with context using AND logic - ALL keywords must be present."""
         matches = []
         
         # Limit content length for performance (keep first 50KB)
         if len(content) > 50000:
             content = content[:50000] + "... [content truncated for performance]"
         
+        # First check: ALL keywords must be present (AND logic)
+        content_lower = content.lower()
+        for keyword in keywords:
+            if keyword.lower() not in content_lower:
+                # If ANY keyword is missing, return no matches
+                return []
+        
+        # All keywords are present, now find matches for each keyword
         for keyword in keywords:
             # Support both exact and fuzzy matching
             pattern = re.compile(re.escape(keyword), re.IGNORECASE)
