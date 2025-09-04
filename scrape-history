@@ -905,14 +905,6 @@ class HTMLReportGenerator:
     
     def generate_report(self, results: List[Dict], keywords: List[str], days: int = None, cache_stats: Dict = None) -> str:
         """Generate HTML report from search results."""
-        # Performance safeguard - limit results for browser rendering
-        max_results_for_html = 100
-        results_limited = len(results) > max_results_for_html
-        if results_limited:
-            print(f"WARNING: Limiting HTML report to first {max_results_for_html} results for performance")
-            print(f"         Use --max-urls to reduce the number of URLs processed")
-            results = results[:max_results_for_html]
-        
         template = Template(self.HTML_TEMPLATE)
         
         successful_matches = sum(1 for r in results if r.get('matches'))
@@ -930,8 +922,7 @@ class HTMLReportGenerator:
             from_cache_count=from_cache_count,
             fresh_scrape_count=fresh_scrape_count,
             cache_stats=cache_stats or {},
-            generation_time=datetime.now(),
-            results_limited=results_limited
+            generation_time=datetime.now()
         )
 
 
