@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firefox History Search Results</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .cache-stats { background: #e8f4fd; padding: 10px; border-radius: 5px; font-size: 14px; margin-bottom: 20px; }
+        .result { border: 1px solid #ddd; margin-bottom: 20px; border-radius: 5px; }
+        .result-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; }
+        .result-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .result-url { color: #666; font-size: 14px; word-break: break-all; }
+        .matches { padding: 15px; }
+        .match { background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .keyword { background: #ffc107; padding: 2px 4px; border-radius: 2px; font-weight: bold; }
+        .error { color: #dc3545; font-style: italic; }
+        .meta { color: #6c757d; font-size: 12px; }
+        .cache-indicator { 
+            display: inline-block; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-size: 11px; 
+            font-weight: bold;
+        }
+        .cached { background: #d4edda; color: #155724; }
+        .fresh { background: #cce5ff; color: #004085; }
+        .search-box { margin-bottom: 20px; }
+        .search-box input { padding: 8px; width: 300px; margin-right: 10px; }
+        .search-box button { padding: 8px 15px; }
+        
+        /* Search highlighting */
+        .highlight { background: #ffeb3b; padding: 1px 2px; }
+    </style>
+    <script>
+        function highlightKeywords() {
+            try {
+                const keywords = ["python", "tutorial"];
+                const results = document.querySelectorAll('.match');
+                
+                results.forEach((result, index) => {
+                    let html = result.innerHTML;
+                    keywords.forEach(keyword => {
+                        // Escape special regex characters
+                        const escapedKeyword = keyword.replace(/[.*+?^${}()|\[\]\\]/g, '\$&');
+                        const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+                        html = html.replace(regex, '<span class="highlight">$1</span>');
+                    });
+                    result.innerHTML = html;
+                });
+            } catch (error) {
+                console.error('Error during keyword highlighting:', error);
+            }
+        }
+        
+        function filterResults() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const results = document.querySelectorAll('.result');
+            let visibleCount = 0;
+            
+            results.forEach(result => {
+                const text = result.textContent.toLowerCase();
+                const isVisible = text.includes(searchTerm);
+                result.style.display = isVisible ? 'block' : 'none';
+                if (isVisible) visibleCount++;
+            });
+            
+            // Update visible count
+            document.getElementById('visible-count').textContent = visibleCount;
+        }
+        
+        function toggleHighlighting() {
+            const checkbox = document.getElementById('enable-highlighting');
+            if (checkbox.checked) {
+                highlightKeywords();
+            } else {
+                // Remove highlighting
+                document.querySelectorAll('.highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
+            }
+        }
+        
+        window.onload = function() {
+            try {
+                // Set up highlighting toggle
+                document.getElementById('enable-highlighting').addEventListener('change', toggleHighlighting);
+                
+                // Initial highlighting
+                highlightKeywords();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Firefox History Search Results</h1>
+    
+    <div class="cache-stats">
+        <strong>Cache Status:</strong> 
+        413 pages cached (5.6 MB) | 
+        Cache covers 2025-09-03T19:52:56.519266 to 2025-09-04T10:29:51.957110
+    </div>
+    
+    <div class="summary">
+        <strong>Search Summary:</strong><br>
+        Keywords: python, tutorial<br>
+        Time period: Last 7 days<br>
+        URLs processed: 1<br>
+        URLs with matches: 1<br>
+        Failed scrapes: 0<br>
+        From cache: 1 | Fresh scrapes: 0
+    </div>
+    
+    <div class="search-box">
+        <input type="text" id="search" placeholder="Filter results..." onkeyup="filterResults()">
+        <button onclick="filterResults()">Filter</button>
+        <label><input type="checkbox" id="enable-highlighting" checked> Enable keyword highlighting</label>
+    </div>
+    
+    
+    <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
+        Displaying <span id="visible-count">1</span> of 1 results
+    </div>
+    
+    
+    <div class="result">
+        <div class="result-header">
+            <div class="result-title">
+                <a href="https://nlp.seas.harvard.edu/annotated-transformer/" target="_blank">The Annotated Transformer</a>
+                
+                <span class="cache-indicator cached">CACHED</span>
+                
+            </div>
+            <div class="result-url">https://nlp.seas.harvard.edu/annotated-transformer/</div>
+            <div class="meta">
+                Visited: 2025-08-31 11:55 | 
+                Scraped: 2025-09-04 10:03:09.405226
+            </div>
+        </div>
+        
+        
+        <div class="matches">
+            
+            <div class="match">
+                <strong>Found "python":</strong><br>
+                ms Skip # !pip install -r requirements.txt # # Uncomment for colab # # # !pip install -q torchdata==0.3.0 torchtext==0.12 spacy==3.2 altair GPUtil # !python -m spacy download de_core_news_sm # !python -m spacy download en_core_web_sm import os from os.path import exists import torch import torch.nn ...
+            </div>
+            
+            <div class="match">
+                <strong>Found "python":</strong><br>
+                # Uncomment for colab # # # !pip install -q torchdata==0.3.0 torchtext==0.12 spacy==3.2 altair GPUtil # !python -m spacy download de_core_news_sm # !python -m spacy download en_core_web_sm import os from os.path import exists import torch import torch.nn as nn from torch.nn.functional import log_sof...
+            </div>
+            
+            <div class="match">
+                <strong>Found "python":</strong><br>
+                wnload them if they haven't been # downloaded already def load_tokenizers(): try: spacy_de = spacy.load("de_core_news_sm") except IOError: os.system("python -m spacy download de_core_news_sm") spacy_de = spacy.load("de_core_news_sm") try: spacy_en = spacy.load("en_core_web_sm") except IOError: os.sy...
+            </div>
+            
+            <div class="match">
+                <strong>Found "python":</strong><br>
+                -m spacy download de_core_news_sm") spacy_de = spacy.load("de_core_news_sm") try: spacy_en = spacy.load("en_core_web_sm") except IOError: os.system("python -m spacy download en_core_web_sm") spacy_en = spacy.load("en_core_web_sm") return spacy_de, spacy_en def tokenize(text, tokenizer): return [tok....
+            </div>
+            
+            <div class="match">
+                <strong>Found "tutorial":</strong><br>
+                ur transformer to memorize the input. As you will see the output is randomly generated due to the fact that the model is not trained yet. In the next tutorial we will build the training function and try to train our model to memorize the numbers from 1 to 10. def inference_test(): test_model = make_...
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    
+    <div class="meta">
+        Generated on 2025-09-04 10:29:51
+    </div>
+</body>
+</html>
+    
