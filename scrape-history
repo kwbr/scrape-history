@@ -3,7 +3,7 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #     "httpx>=0.25.0",
-#     "beautifulsoup4>=4.12.0", 
+#     "beautifulsoup4>=4.12.0",
 #     "aiofiles>=23.0.0",
 #     "jinja2>=3.1.0",
 #     "tqdm>=4.65.0",
@@ -64,247 +64,309 @@ warnings.filterwarnings("ignore", message=".*REPLACEMENT CHARACTER.*")
 # Default exclusion patterns
 DEFAULT_DOMAIN_EXCLUSIONS = [
     # Search engines
-    "google.com", "kagi.com", "bing.com", "duckduckgo.com",
-    
+    "google.com",
+    "kagi.com",
+    "bing.com",
+    "duckduckgo.com",
     # Social media platforms
-    "youtube.com", "twitter.com", "facebook.com", "instagram.com", 
-    "linkedin.com", "tiktok.com", "snapchat.com", "pinterest.com",
-    
+    "youtube.com",
+    "twitter.com",
+    "facebook.com",
+    "instagram.com",
+    "linkedin.com",
+    "tiktok.com",
+    "snapchat.com",
+    "pinterest.com",
     # Code hosting (user requested GitHub)
     "github.com",
-    
     # Streaming services
-    "netflix.com", "disneyplus.com", "hulu.com", "amazon.com/prime",
-    "spotify.com", "apple.com/tv", "hbomax.com", "paramount.com",
-    
+    "netflix.com",
+    "disneyplus.com",
+    "hulu.com",
+    "amazon.com/prime",
+    "spotify.com",
+    "apple.com/tv",
+    "hbomax.com",
+    "paramount.com",
     # E-commerce product pages (common patterns)
-    "amazon.com/dp/", "amazon.com/gp/", "amazon.co.uk/dp/", 
-    "amazon.de/dp/", "amazon.fr/dp/", "amazon.com.au/dp/",
-    "ebay.com/itm/", "etsy.com/listing/",
-    
+    "amazon.com/dp/",
+    "amazon.com/gp/",
+    "amazon.co.uk/dp/",
+    "amazon.de/dp/",
+    "amazon.fr/dp/",
+    "amazon.com.au/dp/",
+    "ebay.com/itm/",
+    "etsy.com/listing/",
     # Online stores/shopping
-    "shopify.com", "woocommerce.com", "bigcommerce.com",
-    
+    "shopify.com",
+    "woocommerce.com",
+    "bigcommerce.com",
     # Ad/tracking domains
-    "doubleclick.net", "googletagmanager.com", "googlesyndication.com",
-    "facebook.com/tr", "analytics.google.com",
+    "doubleclick.net",
+    "googletagmanager.com",
+    "googlesyndication.com",
+    "facebook.com/tr",
+    "analytics.google.com",
 ]
 
 DEFAULT_FILE_EXTENSION_EXCLUSIONS = [
     # Images
-    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico",
-    
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".bmp",
+    ".ico",
     # Documents that are hard to search meaningfully
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-    
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
     # Stylesheets and assets
-    ".css", ".scss", ".sass", ".less",
-    
+    ".css",
+    ".scss",
+    ".sass",
+    ".less",
     # Archives and binaries
-    ".zip", ".tar", ".gz", ".rar", ".7z", ".exe", ".dmg", ".deb", ".rpm",
-    
+    ".zip",
+    ".tar",
+    ".gz",
+    ".rar",
+    ".7z",
+    ".exe",
+    ".dmg",
+    ".deb",
+    ".rpm",
     # Media files
-    ".mp3", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4a",
-    
+    ".mp3",
+    ".mp4",
+    ".avi",
+    ".mov",
+    ".wmv",
+    ".flv",
+    ".webm",
+    ".m4a",
     # Fonts
-    ".woff", ".woff2", ".ttf", ".otf", ".eot",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
 ]
 
 
-def get_effective_patterns(custom_exclusions: List[str], custom_inclusions: List[str], use_defaults: bool = True) -> Dict[str, Dict[str, List[str]]]:
+def get_effective_patterns(
+    custom_exclusions: List[str],
+    custom_inclusions: List[str],
+    use_defaults: bool = True,
+) -> Dict[str, Dict[str, List[str]]]:
     """Combine default and custom exclusion/inclusion patterns."""
-    exclusions = {'domains': [], 'extensions': [], 'general': []}
-    inclusions = {'domains': [], 'extensions': [], 'general': []}
-    
+    exclusions = {"domains": [], "extensions": [], "general": []}
+    inclusions = {"domains": [], "extensions": [], "general": []}
+
     # Add default exclusions if enabled
     if use_defaults:
-        exclusions['domains'].extend(DEFAULT_DOMAIN_EXCLUSIONS)
-        exclusions['extensions'].extend(DEFAULT_FILE_EXTENSION_EXCLUSIONS)
-    
+        exclusions["domains"].extend(DEFAULT_DOMAIN_EXCLUSIONS)
+        exclusions["extensions"].extend(DEFAULT_FILE_EXTENSION_EXCLUSIONS)
+
     # Add custom exclusions
     for pattern in custom_exclusions:
-        if pattern.startswith('.'):
-            exclusions['extensions'].append(pattern)
+        if pattern.startswith("."):
+            exclusions["extensions"].append(pattern)
         else:
-            exclusions['general'].append(pattern)
-    
+            exclusions["general"].append(pattern)
+
     # Add custom inclusions (overrides for exclusions)
     for pattern in custom_inclusions:
-        if pattern.startswith('.'):
-            inclusions['extensions'].append(pattern)
+        if pattern.startswith("."):
+            inclusions["extensions"].append(pattern)
         else:
-            inclusions['general'].append(pattern)
-    
-    return {
-        'exclusions': exclusions,
-        'inclusions': inclusions
-    }
+            inclusions["general"].append(pattern)
+
+    return {"exclusions": exclusions, "inclusions": inclusions}
 
 
 def normalize_datetime(dt_value) -> datetime:
     """
     Normalize various datetime representations to a consistent datetime object.
-    
+
     Args:
         dt_value: Can be datetime, string, timestamp, or None
-        
+
     Returns:
         datetime object (uses datetime.min as fallback)
     """
     if dt_value is None:
         return datetime.min
-        
+
     if isinstance(dt_value, datetime):
         return dt_value
-        
+
     if isinstance(dt_value, str):
         try:
             return datetime.fromisoformat(dt_value)
         except (ValueError, TypeError):
             try:
                 # Try common datetime formats
-                return datetime.strptime(dt_value, '%Y-%m-%d %H:%M:%S')
+                return datetime.strptime(dt_value, "%Y-%m-%d %H:%M:%S")
             except (ValueError, TypeError):
                 return datetime.min
-                
+
     if isinstance(dt_value, (int, float)):
         try:
             # Assume it's a timestamp
             return datetime.fromtimestamp(dt_value)
         except (ValueError, OSError):
             return datetime.min
-            
+
     return datetime.min
 
 
 def deduplicate_results_by_url(results: List[Dict]) -> List[Dict]:
     """
     Deduplicate search results by URL, keeping the result with the most recent visit date.
-    
+
     Args:
         results: List of result dictionaries with 'url', 'visited', and other fields
-        
+
     Returns:
         List of deduplicated results, sorted by most recent visit date
     """
     if not results:
         return results
-    
+
     original_count = len(results)
-    
+
     # Group results by URL
     url_groups = {}
     for result in results:
-        url = result.get('url', '')
+        url = result.get("url", "")
         if not url:
             continue  # Skip results without URL
-            
+
         if url not in url_groups:
             url_groups[url] = []
         url_groups[url].append(result)
-    
+
     # Track deduplication stats
     duplicates_found = 0
-    
+
     # For each URL, keep the result with the most recent visit date
     deduplicated = []
     for url, url_results in url_groups.items():
         if len(url_results) > 1:
             duplicates_found += len(url_results) - 1
-            
+
             # Sort by visit date with standardized handling
             def get_visit_date(r):
-                return normalize_datetime(r.get('visited'))
-                
+                return normalize_datetime(r.get("visited"))
+
             # Find the result with most recent visit date
             most_recent = max(url_results, key=get_visit_date)
-            
+
             # Preserve additional metadata from the most recent result
             if len(url_results) > 1:
                 # Combine visit counts if available
-                total_visit_count = sum(r.get('visit_count', 1) for r in url_results)
-                if 'visit_count' in most_recent:
-                    most_recent['visit_count'] = total_visit_count
-                
+                total_visit_count = sum(r.get("visit_count", 1) for r in url_results)
+                if "visit_count" in most_recent:
+                    most_recent["visit_count"] = total_visit_count
+
             deduplicated.append(most_recent)
         else:
             deduplicated.append(url_results[0])
-    
+
     # Sort final results by visit date (most recent first)
-    deduplicated.sort(key=lambda r: normalize_datetime(r.get('visited')), reverse=True)
-    
+    deduplicated.sort(key=lambda r: normalize_datetime(r.get("visited")), reverse=True)
+
     # Output deduplication stats
     final_count = len(deduplicated)
     if duplicates_found > 0:
-        print(f"Deduplication: Removed {duplicates_found} duplicate URLs ({original_count} → {final_count} results)")
-    
+        print(
+            f"Deduplication: Removed {duplicates_found} duplicate URLs ({original_count} → {final_count} results)"
+        )
+
     return deduplicated
 
 
 def should_exclude_url(url: str, patterns: Dict[str, Dict[str, List[str]]]) -> bool:
     """Check if URL should be excluded based on exclusion/inclusion patterns."""
     url_lower = url.lower()
-    
-    exclusions = patterns['exclusions']
-    inclusions = patterns['inclusions']
-    
+
+    exclusions = patterns["exclusions"]
+    inclusions = patterns["inclusions"]
+
     # First check inclusions - if URL matches any include pattern, always allow it
     # Check include domain patterns
-    for domain in inclusions['domains']:
+    for domain in inclusions["domains"]:
         if domain.lower() in url_lower:
             return False
-    
-    # Check include file extension patterns  
-    for ext in inclusions['extensions']:
+
+    # Check include file extension patterns
+    for ext in inclusions["extensions"]:
         if url_lower.endswith(ext.lower()):
             return False
-    
+
     # Check include general patterns
-    for pattern in inclusions['general']:
+    for pattern in inclusions["general"]:
         if pattern.lower() in url_lower:
             return False
-    
+
     # Now check exclusions - only exclude if not already included
     # Check exclude domain patterns
-    for domain in exclusions['domains']:
+    for domain in exclusions["domains"]:
         if domain.lower() in url_lower:
             return True
-    
+
     # Check exclude file extension patterns
-    for ext in exclusions['extensions']:
+    for ext in exclusions["extensions"]:
         if url_lower.endswith(ext.lower()):
             return True
-    
+
     # Check exclude general patterns (legacy behavior)
-    for pattern in exclusions['general']:
+    for pattern in exclusions["general"]:
         if pattern.lower() in url_lower:
             return True
-    
+
     return False
 
 
-def check_include_warnings(include_patterns: List[str], exclusions: Dict[str, List[str]]):
+def check_include_warnings(
+    include_patterns: List[str], exclusions: Dict[str, List[str]]
+):
     """Check include patterns for potential issues and show helpful warnings."""
     if not include_patterns:
         return
-    
+
     # Collect all exclusion patterns into a single list for checking
     all_exclusions = []
-    all_exclusions.extend(exclusions['domains'])
-    all_exclusions.extend(exclusions['extensions'])
-    all_exclusions.extend(exclusions['general'])
-    
+    all_exclusions.extend(exclusions["domains"])
+    all_exclusions.extend(exclusions["extensions"])
+    all_exclusions.extend(exclusions["general"])
+
     for pattern in include_patterns:
         # Only warn for short patterns that are likely to be overly broad
         if len(pattern) < 6:
-            matches = [excl for excl in all_exclusions if pattern.lower() in excl.lower()]
+            matches = [
+                excl for excl in all_exclusions if pattern.lower() in excl.lower()
+            ]
             if matches:
-                print(f"Warning: Include pattern '{pattern}' may match unintended URLs.")
-                print(f"    Found related exclusions: {', '.join(matches[:3])}")  # Show up to 3 matches
+                print(
+                    f"Warning: Include pattern '{pattern}' may match unintended URLs."
+                )
+                print(
+                    f"    Found related exclusions: {', '.join(matches[:3])}"
+                )  # Show up to 3 matches
                 if len(matches) == 1:
-                    print(f"    Did you mean: --include \"{matches[0]}\"?")
+                    print(f'    Did you mean: --include "{matches[0]}"?')
                 elif len(matches) > 1:
-                    print(f"    Did you mean one of: {' or '.join('--include \"' + m + '\"' for m in matches[:2])}?")
+                    print(
+                        f"    Did you mean one of: {' or '.join('--include "' + m + '"' for m in matches[:2])}?"
+                    )
                 print()
 
 
@@ -334,10 +396,12 @@ def expand_path(path_str: str) -> Path:
     return Path(path_str).expanduser().absolute()
 
 
-def handle_path(pathmap: dict[str, str | tuple[str, ...]], browser_name: str = "Firefox") -> tuple[Path, ...]:
+def handle_path(
+    pathmap: dict[str, str | tuple[str, ...]], browser_name: str = "Firefox"
+) -> tuple[Path, ...]:
     """Cross-platform path resolution."""
     os_key = determine_operating_system()
-    
+
     # Map different OS names
     if os_key == "darwin":
         os_key = "darwin"
@@ -345,24 +409,26 @@ def handle_path(pathmap: dict[str, str | tuple[str, ...]], browser_name: str = "
         os_key = "linux"
     elif os_key in ("win32", "windows"):
         os_key = "win32"
-    
+
     paths = pathmap.get(os_key)
     if not paths:
         # Fallback to linux behavior
-        print(f"Warning: {browser_name} paths not defined for {os_key}, using Linux defaults")
+        print(
+            f"Warning: {browser_name} paths not defined for {os_key}, using Linux defaults"
+        )
         paths = pathmap.get("linux", pathmap[list(pathmap.keys())[0]])
-    
+
     # Normalize to tuple
     if isinstance(paths, str):
         paths = (paths,)
-    
+
     return tuple(expand_path(p) for p in paths)
 
 
 def handle_glob(base_paths: tuple[Path, ...], pattern: str) -> Path:
     """Find database using glob pattern with recursive fallback."""
     from itertools import chain
-    
+
     def try_glob(recursive: bool = False) -> list[Path]:
         results = []
         for base in base_paths:
@@ -373,31 +439,35 @@ def handle_glob(base_paths: tuple[Path, ...], pattern: str) -> Path:
             else:
                 results.extend(base.glob(pattern))
         return results
-    
+
     # Try non-recursive first
     matches = try_glob(recursive=False)
     if not matches:
         # Try recursive as fallback
         matches = try_glob(recursive=True)
-    
+
     if len(matches) > 1:
         paths_str = "\n".join(str(p) for p in matches)
-        raise ValueError(f"Multiple Firefox profiles found:\n{paths_str}\n\nUse --profile to specify one")
+        raise ValueError(
+            f"Multiple Firefox profiles found:\n{paths_str}\n\nUse --profile to specify one"
+        )
     elif len(matches) == 1:
         return matches[0]
     else:
-        raise FileNotFoundError(f"No Firefox database found matching pattern '{pattern}' in {base_paths}")
+        raise FileNotFoundError(
+            f"No Firefox database found matching pattern '{pattern}' in {base_paths}"
+        )
 
 
 # Browser classes (simplified browserexport approach)
 class Browser:
     """Base browser class."""
-    
+
     @classmethod
     def data_directories(cls) -> tuple[Path, ...]:
         """Get browser data directories for current platform."""
         raise NotImplementedError
-    
+
     @classmethod
     def locate_database(cls, profile: str = "*") -> Path:
         """Locate database file using profile pattern."""
@@ -406,20 +476,22 @@ class Browser:
 
 class Firefox(Browser):
     """Firefox browser implementation."""
-    
+
     @classmethod
     def data_directories(cls) -> tuple[Path, ...]:
         """Get Firefox profile directories."""
-        return handle_path({
-            "linux": (
-                "~/.mozilla/firefox/",
-                "~/.var/app/org.mozilla.firefox/.mozilla/firefox/",  # Flatpak
-                "~/snap/firefox/common/.mozilla/firefox/",  # Snap
-            ),
-            "darwin": "~/Library/Application Support/Firefox/Profiles/",
-            "win32": windows_appdata_paths("Mozilla/Firefox/Profiles/"),
-        })
-    
+        return handle_path(
+            {
+                "linux": (
+                    "~/.mozilla/firefox/",
+                    "~/.var/app/org.mozilla.firefox/.mozilla/firefox/",  # Flatpak
+                    "~/snap/firefox/common/.mozilla/firefox/",  # Snap
+                ),
+                "darwin": "~/Library/Application Support/Firefox/Profiles/",
+                "win32": windows_appdata_paths("Mozilla/Firefox/Profiles/"),
+            }
+        )
+
     @classmethod
     def locate_database(cls, profile: str = "*") -> Path:
         """Locate Firefox places.sqlite using profile pattern."""
@@ -429,24 +501,24 @@ class Firefox(Browser):
 
 class ContentCache:
     """Persistent cache for scraped web content.
-    
+
     Uses platformdirs for proper cross-platform cache directory management:
-    - macOS: ~/Library/Caches/scrape-history  
+    - macOS: ~/Library/Caches/scrape-history
     - Linux: ~/.cache/scrape-history
     - Windows: %LOCALAPPDATA%\\scrape-history
     """
-    
+
     def __init__(self, cache_dir: Path = None):
         if cache_dir:
             self.cache_dir = cache_dir
         else:
             # Use platformdirs for proper cross-platform cache directory
             self.cache_dir = Path(user_cache_dir("scrape-history", "kwbr"))
-        
+
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.cache_dir / "content_cache.db"
         self._init_db()
-    
+
     def _init_db(self):
         """Initialize cache database."""
         conn = sqlite3.connect(self.db_path)
@@ -470,193 +542,224 @@ class ContentCache:
         """)
         conn.commit()
         conn.close()
-    
+
     def _url_hash(self, url: str) -> str:
         """Generate hash for URL."""
         return hashlib.md5(url.encode()).hexdigest()
-    
+
     def _content_hash(self, content: str) -> str:
         """Generate hash for content."""
         return hashlib.md5(content.encode()).hexdigest()
-    
+
     def get_cached_content(self, url: str, max_age_hours: int = 24) -> Optional[Dict]:
         """Get cached content if it exists and is fresh enough."""
         url_hash = self._url_hash(url)
         cutoff_time = (datetime.now() - timedelta(hours=max_age_hours)).isoformat()
-        
+
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT * FROM cached_content 
+
+        cursor.execute(
+            """
+            SELECT * FROM cached_content
             WHERE url_hash = ? AND scraped_at > ?
-        """, (url_hash, cutoff_time))
-        
+        """,
+            (url_hash, cutoff_time),
+        )
+
         row = cursor.fetchone()
         conn.close()
-        
+
         if row:
             return {
-                'url': row['url'],
-                'title': row['title'],
-                'content': row['content'],
-                'scraped_at': datetime.fromisoformat(row['scraped_at']),
-                'status': row['status'],
-                'error': row['error_message'],
-                'from_cache': True
+                "url": row["url"],
+                "title": row["title"],
+                "content": row["content"],
+                "scraped_at": datetime.fromisoformat(row["scraped_at"]),
+                "status": row["status"],
+                "error": row["error_message"],
+                "from_cache": True,
             }
-        
+
         return None
-    
-    def cache_content(self, url: str, title: str, content: str, status: str, error: str = None):
+
+    def cache_content(
+        self, url: str, title: str, content: str, status: str, error: str = None
+    ):
         """Store content in cache."""
         url_hash = self._url_hash(url)
         content_hash = self._content_hash(content) if content else None
-        
+
         conn = sqlite3.connect(self.db_path)
-        conn.execute("""
-            INSERT OR REPLACE INTO cached_content 
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO cached_content
             (url_hash, url, title, content, scraped_at, content_hash, status, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (url_hash, url, title, content, datetime.now().isoformat(), 
-              content_hash, status, error))
+        """,
+            (
+                url_hash,
+                url,
+                title,
+                content,
+                datetime.now().isoformat(),
+                content_hash,
+                status,
+                error,
+            ),
+        )
         conn.commit()
         conn.close()
-    
-    def search_cached_content(self, keywords: List[str], patterns: Dict[str, Dict[str, List[str]]] = None, firefox_profile: str = None) -> List[Dict]:
+
+    def search_cached_content(
+        self,
+        keywords: List[str],
+        patterns: Dict[str, Dict[str, List[str]]] = None,
+        firefox_profile: str = None,
+    ) -> List[Dict]:
         """Search through all cached content for keywords, preserving original Firefox visit dates."""
-        patterns = patterns or {'exclusions': {'domains': [], 'extensions': [], 'general': []}, 'inclusions': {'domains': [], 'extensions': [], 'general': []}}
-        
+        patterns = patterns or {
+            "exclusions": {"domains": [], "extensions": [], "general": []},
+            "inclusions": {"domains": [], "extensions": [], "general": []},
+        }
+
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT url, title, content, scraped_at, status
-            FROM cached_content 
+            FROM cached_content
             WHERE status = 'success' AND content IS NOT NULL
             ORDER BY scraped_at DESC
         """)
-        
+
         # Get Firefox history to preserve original visit dates
         firefox_urls = {}
         try:
             extractor = FirefoxHistoryExtractor()
             # Get all Firefox URLs from a longer time period to catch visit dates
-            ff_results = extractor.extract_urls(days=365, patterns=patterns, profile_pattern=firefox_profile)
-            firefox_urls = {result['url']: result['visited'] for result in ff_results}
+            ff_results = extractor.extract_urls(
+                days=365, patterns=patterns, profile_pattern=firefox_profile
+            )
+            firefox_urls = {result["url"]: result["visited"] for result in ff_results}
         except Exception as e:
             print(f"Warning: Could not load Firefox history for visit dates: {e}")
-        
+
         results = []
         keyword_searcher = KeywordSearcher()
-        
+
         for row in cursor.fetchall():
-            url = row['url']
-            
+            url = row["url"]
+
             # Apply exclusion filters using new logic
             if should_exclude_url(url, patterns):
                 continue
-            
-            matches = keyword_searcher.search_content(row['content'], keywords)
+
+            matches = keyword_searcher.search_content(row["content"], keywords)
             if matches:
                 # Use original Firefox visit date if available, fallback to scrape date
                 visited_date = firefox_urls.get(url)
                 if visited_date is None:
-                    visited_date = normalize_datetime(row['scraped_at'])
-                
-                results.append({
-                    'url': url,
-                    'title': row['title'],
-                    'visited': visited_date,
-                    'matches': matches,
-                    'status': 'success',
-                    'from_cache': True
-                })
-        
+                    visited_date = normalize_datetime(row["scraped_at"])
+
+                results.append(
+                    {
+                        "url": url,
+                        "title": row["title"],
+                        "visited": visited_date,
+                        "matches": matches,
+                        "status": "success",
+                        "from_cache": True,
+                    }
+                )
+
         conn.close()
         return results
-    
+
     def get_cache_stats(self) -> Dict:
         """Get cache statistics."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT COUNT(*) FROM cached_content")
         total_entries = cursor.fetchone()[0]
-        
+
         cursor.execute("SELECT COUNT(*) FROM cached_content WHERE status = 'success'")
         successful_entries = cursor.fetchone()[0]
-        
+
         cursor.execute("SELECT MIN(scraped_at), MAX(scraped_at) FROM cached_content")
         min_date, max_date = cursor.fetchone()
-        
+
         conn.close()
-        
+
         # Calculate cache size in MB
         cache_size_mb = 0.0
         if self.db_path.exists():
             cache_size_bytes = self.db_path.stat().st_size
             cache_size_mb = cache_size_bytes / (1024 * 1024)  # Convert to MB
-        
+
         return {
-            'total_entries': total_entries,
-            'successful_entries': successful_entries,
-            'oldest_entry': min_date,
-            'newest_entry': max_date,
-            'cache_size_mb': cache_size_mb
+            "total_entries": total_entries,
+            "successful_entries": successful_entries,
+            "oldest_entry": min_date,
+            "newest_entry": max_date,
+            "cache_size_mb": cache_size_mb,
         }
-    
+
     def clean_old_entries(self, days: int = 30):
         """Remove entries older than specified days."""
         cutoff_time = (datetime.now() - timedelta(days=days)).isoformat()
-        
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        cursor.execute("DELETE FROM cached_content WHERE scraped_at < ?", 
-                      (cutoff_time,))
+
+        cursor.execute(
+            "DELETE FROM cached_content WHERE scraped_at < ?", (cutoff_time,)
+        )
         deleted = cursor.rowcount
         conn.commit()
         conn.close()
-        
+
         return deleted
 
 
 class FirefoxHistoryExtractor:
     """Extract URLs from Firefox history database using browserexport-style detection."""
-    
+
     def __init__(self):
         self.browser = Firefox()
-    
+
     def list_profiles(self) -> List[Dict]:
         """List available Firefox profiles with glob pattern examples."""
         try:
             dirs = self.browser.data_directories()
             profiles = []
-            
+
             for base_dir in dirs:
                 if not base_dir.exists():
                     continue
-                
+
                 # Find all profile directories with places.sqlite
                 for profile_dir in base_dir.iterdir():
                     if profile_dir.is_dir():
                         places_db = profile_dir / "places.sqlite"
                         if places_db.exists():
-                            profiles.append({
-                                'directory': profile_dir.name,
-                                'name': profile_dir.name,  # Use directory name as profile name
-                                'path': places_db,
-                                'is_default': 'default' in profile_dir.name.lower()
-                            })
-            
-            return sorted(profiles, key=lambda p: (not p['is_default'], p['directory']))
-            
+                            profiles.append(
+                                {
+                                    "directory": profile_dir.name,
+                                    "name": profile_dir.name,  # Use directory name as profile name
+                                    "path": places_db,
+                                    "is_default": "default" in profile_dir.name.lower(),
+                                }
+                            )
+
+            return sorted(profiles, key=lambda p: (not p["is_default"], p["directory"]))
+
         except Exception as e:
             raise FileNotFoundError(f"Failed to list Firefox profiles: {e}")
-    
+
     def get_profile_path(self, profile_pattern: str = None) -> Path:
         """Get database path using profile pattern (supports glob patterns)."""
         pattern = profile_pattern or "*"
@@ -666,188 +769,207 @@ class FirefoxHistoryExtractor:
             # Provide helpful error with available profiles
             try:
                 profiles = self.list_profiles()
-                available = [p['directory'] for p in profiles]
+                available = [p["directory"] for p in profiles]
                 raise ValueError(f"{e}\nAvailable profiles: {available}")
             except:
                 raise e
-    
-    def extract_urls(self, days: int, patterns: Dict[str, Dict[str, List[str]]], profile_pattern: str = None) -> List[Dict]:
+
+    def extract_urls(
+        self,
+        days: int,
+        patterns: Dict[str, Dict[str, List[str]]],
+        profile_pattern: str = None,
+    ) -> List[Dict]:
         """Extract URLs from Firefox history using profile pattern."""
         db_path = self.get_profile_path(profile_pattern)
-        
+
         # Calculate date threshold
         since_date = datetime.now() - timedelta(days=days)
-        since_timestamp = int(since_date.timestamp() * 1_000_000)  # Firefox uses microseconds
-        
+        since_timestamp = int(
+            since_date.timestamp() * 1_000_000
+        )  # Firefox uses microseconds
+
         conn = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
         cursor = conn.cursor()
-        
+
         query = """
         SELECT DISTINCT url, title, last_visit_date, visit_count
-        FROM moz_places 
-        WHERE last_visit_date > ? 
+        FROM moz_places
+        WHERE last_visit_date > ?
         AND url NOT LIKE 'about:%'
         AND url NOT LIKE 'moz-extension:%'
         AND visit_count > 0
         ORDER BY last_visit_date DESC
         """
-        
+
         cursor.execute(query, (since_timestamp,))
         results = []
-        
+
         for url, title, timestamp, visit_count in cursor.fetchall():
             # Apply exclusion filters using new logic
             if should_exclude_url(url, patterns):
                 continue
-            
-            results.append({
-                'url': url,
-                'title': title or url,
-                'visited': datetime.fromtimestamp(timestamp / 1_000_000),
-                'visit_count': visit_count
-            })
-        
+
+            results.append(
+                {
+                    "url": url,
+                    "title": title or url,
+                    "visited": datetime.fromtimestamp(timestamp / 1_000_000),
+                    "visit_count": visit_count,
+                }
+            )
+
         conn.close()
         return results
 
 
 class AsyncWebScraper:
     """Async web scraper with caching."""
-    
+
     def __init__(self, cache: ContentCache, max_concurrent: int = 10):
         self.cache = cache
         self.semaphore = asyncio.Semaphore(max_concurrent)
         self.client = httpx.AsyncClient(
             timeout=30.0,
-            headers={'User-Agent': 'Kai\'s vibecode project'},
-            follow_redirects=True
+            headers={"User-Agent": "Kai's vibecode project"},
+            follow_redirects=True,
         )
-    
-    async def scrape_url(self, url: str, use_cache: bool = True, max_cache_age_hours: int = 24) -> Dict:
+
+    async def scrape_url(
+        self, url: str, use_cache: bool = True, max_cache_age_hours: int = 24
+    ) -> Dict:
         """Scrape a URL, using cache when possible."""
-        
+
         # Try cache first
         if use_cache:
             cached = self.cache.get_cached_content(url, max_cache_age_hours)
             if cached:
                 return cached
-        
+
         # Scrape fresh content - only HTTP request inside semaphore
         try:
             async with self.semaphore:
                 response = await self.client.get(url)
                 response.raise_for_status()
-                
+
                 # Handle encoding more gracefully
                 content = response.content
                 try:
                     # Try to decode with response encoding first
-                    text_content = content.decode(response.encoding or 'utf-8', errors='replace')
+                    text_content = content.decode(
+                        response.encoding or "utf-8", errors="replace"
+                    )
                 except (UnicodeDecodeError, LookupError):
                     # Fallback to utf-8 with replacement
-                    text_content = content.decode('utf-8', errors='replace')
-            
+                    text_content = content.decode("utf-8", errors="replace")
+
             # CPU-intensive work outside semaphore - allows more concurrent HTTP requests
             # Parse with warnings suppressed
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                soup = BeautifulSoup(text_content, 'html.parser')
-            
+                soup = BeautifulSoup(text_content, "html.parser")
+
             # Remove script and style elements
-            for script in soup(["script", "style", "nav", "header", "footer", ".advertisement"]):
+            for script in soup(
+                ["script", "style", "nav", "header", "footer", ".advertisement"]
+            ):
                 script.decompose()
-            
+
             # Extract text content
             text = soup.get_text()
             lines = (line.strip() for line in text.splitlines())
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = ' '.join(chunk for chunk in chunks if chunk)
-            
-            title = soup.title.string if soup.title else ''
-            
+            text = " ".join(chunk for chunk in chunks if chunk)
+
+            title = soup.title.string if soup.title else ""
+
             # Cache the successful result (I/O outside semaphore)
-            self.cache.cache_content(url, title, text, 'success')
-            
+            self.cache.cache_content(url, title, text, "success")
+
             return {
-                'url': url,
-                'title': title,
-                'content': text,
-                'status': 'success',
-                'from_cache': False
+                "url": url,
+                "title": title,
+                "content": text,
+                "status": "success",
+                "from_cache": False,
             }
-            
+
         except Exception as e:
             error_msg = str(e)
-            
+
             # Cache the error (with empty content)
-            self.cache.cache_content(url, '', '', 'error', error_msg)
-            
+            self.cache.cache_content(url, "", "", "error", error_msg)
+
             return {
-                'url': url,
-                'title': '',
-                'content': '',
-                'status': 'error',
-                'error': error_msg,
-                'from_cache': False
+                "url": url,
+                "title": "",
+                "content": "",
+                "status": "error",
+                "error": error_msg,
+                "from_cache": False,
             }
-    
+
     async def close(self):
         await self.client.aclose()
 
 
 class KeywordSearcher:
     """Search for keywords in scraped content."""
-    
-    def search_content(self, content: str, keywords: List[str], max_context_length: int = 300, max_matches_per_keyword: int = 10) -> List[Dict]:
+
+    def search_content(
+        self,
+        content: str,
+        keywords: List[str],
+        max_context_length: int = 300,
+        max_matches_per_keyword: int = 10,
+    ) -> List[Dict]:
         """Find keyword matches with context using AND logic - ALL keywords must be present."""
         matches = []
-        
+
         # Limit content length for performance (keep first 50KB)
         if len(content) > 50000:
             content = content[:50000] + "... [content truncated for performance]"
-        
+
         # First check: ALL keywords must be present (AND logic)
         content_lower = content.lower()
         for keyword in keywords:
             if keyword.lower() not in content_lower:
                 # If ANY keyword is missing, return no matches
                 return []
-        
+
         # All keywords are present, now find matches for each keyword
         for keyword in keywords:
             # Support both exact and fuzzy matching
             pattern = re.compile(re.escape(keyword), re.IGNORECASE)
             keyword_matches = 0
-            
+
             for match in pattern.finditer(content):
                 if keyword_matches >= max_matches_per_keyword:
                     break
-                
+
                 # Smaller context window for better performance
                 context_window = min(200, max_context_length // 2)
                 start = max(0, match.start() - context_window)
                 end = min(len(content), match.end() + context_window)
                 context = content[start:end].strip()
-                
+
                 # Clean up context and limit length
-                context = re.sub(r'\s+', ' ', context)
+                context = re.sub(r"\s+", " ", context)
                 if len(context) > max_context_length:
                     context = context[:max_context_length] + "..."
-                
-                matches.append({
-                    'keyword': keyword,
-                    'context': context,
-                    'position': match.start()
-                })
+
+                matches.append(
+                    {"keyword": keyword, "context": context, "position": match.start()}
+                )
                 keyword_matches += 1
-        
+
         # Limit total matches per URL for performance
         return matches[:50]
 
 
 class HTMLReportGenerator:
     """Generate HTML report with search results."""
-    
+
     HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -867,11 +989,11 @@ class HTMLReportGenerator:
         .keyword { background: #ffc107; padding: 2px 4px; border-radius: 2px; font-weight: bold; }
         .error { color: #dc3545; font-style: italic; }
         .meta { color: #6c757d; font-size: 12px; }
-        .cache-indicator { 
-            display: inline-block; 
-            padding: 2px 6px; 
-            border-radius: 3px; 
-            font-size: 11px; 
+        .cache-indicator {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
             font-weight: bold;
         }
         .cached { background: #d4edda; color: #155724; }
@@ -879,16 +1001,280 @@ class HTMLReportGenerator:
         .search-box { margin-bottom: 20px; }
         .search-box input { padding: 8px; width: 300px; margin-right: 10px; }
         .search-box button { padding: 8px 15px; }
-        
+
         /* Search highlighting */
         .highlight { background: #ffeb3b; padding: 1px 2px; }
+
+        /* Exclusion styles */
+        .exclusion-panel {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .exclusion-buttons {
+            float: right;
+            margin-left: 10px;
+        }
+        .exclude-btn {
+            padding: 4px 8px;
+            margin-left: 5px;
+            font-size: 11px;
+            border: 1px solid #dc3545;
+            background: #fff;
+            color: #dc3545;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .exclude-btn:hover {
+            background: #dc3545;
+            color: #fff;
+        }
+        .excluded-result {
+            opacity: 0.3;
+            border-color: #dc3545 !important;
+        }
+        .excluded-result .result-header {
+            background: #f8d7da !important;
+        }
+        .command-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .copy-btn {
+            padding: 5px 10px;
+            margin-left: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .copy-btn:hover {
+            background: #0056b3;
+        }
     </style>
     <script>
+        // Embedded data from Python
+        const originalArgs = {{ original_args | tojson }};
+        const keywords = {{ keywords | tojson }};
+
+        // Exclusion state management
+        let exclusionState = {
+            domains: new Set(),
+            urls: new Set()
+        };
+
+        // Load exclusions from localStorage
+        function loadExclusions() {
+            const saved = localStorage.getItem('scrape-history-exclusions');
+            if (saved) {
+                const data = JSON.parse(saved);
+                exclusionState.domains = new Set(data.domains || []);
+                exclusionState.urls = new Set(data.urls || []);
+            }
+        }
+
+        // Save exclusions to localStorage
+        function saveExclusions() {
+            const data = {
+                domains: Array.from(exclusionState.domains),
+                urls: Array.from(exclusionState.urls)
+            };
+            localStorage.setItem('scrape-history-exclusions', JSON.stringify(data));
+        }
+
+        // Extract domain from URL
+        function extractDomain(url) {
+            try {
+                return new URL(url).hostname;
+            } catch (e) {
+                return url.split('/')[2] || url; // Fallback parsing
+            }
+        }
+
+        // Exclude domain
+        function excludeDomain(url) {
+            const domain = extractDomain(url);
+            exclusionState.domains.add(domain);
+            saveExclusions();
+            updateDisplay();
+            updateCommandLine();
+        }
+
+        // Exclude specific URL
+        function excludeURL(url) {
+            exclusionState.urls.add(url);
+            saveExclusions();
+            updateDisplay();
+            updateCommandLine();
+        }
+
+        // Clear all exclusions
+        function clearExclusions() {
+            exclusionState.domains.clear();
+            exclusionState.urls.clear();
+            localStorage.removeItem('scrape-history-exclusions');
+            updateDisplay();
+            updateCommandLine();
+        }
+
+        // Check if result should be excluded
+        function shouldExcludeResult(url) {
+            const domain = extractDomain(url);
+            return exclusionState.domains.has(domain) || exclusionState.urls.has(url);
+        }
+
+        // Update display of results based on exclusions and filters
+        function updateDisplay() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const showExcluded = document.getElementById('show-excluded').checked;
+            const results = document.querySelectorAll('.result');
+
+            let visibleCount = 0;
+            let excludedCount = 0;
+
+            results.forEach(result => {
+                const url = result.getAttribute('data-url');
+                const isExcluded = shouldExcludeResult(url);
+                const text = result.textContent.toLowerCase();
+                const matchesSearch = text.includes(searchTerm);
+
+                if (isExcluded) {
+                    excludedCount++;
+                    result.classList.add('excluded-result');
+                    if (!showExcluded) {
+                        result.style.display = 'none';
+                        return;
+                    }
+                } else {
+                    result.classList.remove('excluded-result');
+                }
+
+                const shouldShow = matchesSearch && (showExcluded || !isExcluded);
+                result.style.display = shouldShow ? 'block' : 'none';
+                if (shouldShow && !isExcluded) visibleCount++;
+            });
+
+            // Update counters
+            document.getElementById('visible-count').textContent = visibleCount;
+            document.getElementById('excluded-count').textContent = excludedCount;
+
+            // Update exclusion list
+            updateExclusionList();
+        }
+
+        // Update exclusion list display
+        function updateExclusionList() {
+            const container = document.getElementById('exclusion-list');
+            const items = [];
+
+            exclusionState.domains.forEach(domain => {
+                items.push(`Domain: ${domain}`);
+            });
+
+            exclusionState.urls.forEach(url => {
+                const shortUrl = url.length > 50 ? url.substring(0, 50) + '...' : url;
+                items.push(`URL: ${shortUrl}`);
+            });
+
+            if (items.length === 0) {
+                container.innerHTML = '<em>No exclusions active</em>';
+            } else {
+                container.innerHTML = items.map(item => `<div>• ${item}</div>`).join('');
+            }
+        }
+
+        // Generate command line with current exclusions
+        function generateCommandLine() {
+            const args = { ...originalArgs };
+            const excludeFlags = [];
+
+            // Add domain exclusions
+            exclusionState.domains.forEach(domain => {
+                excludeFlags.push(`--exclude "${domain}"`);
+            });
+
+            // Add URL pattern exclusions (simplified for practicality)
+            exclusionState.urls.forEach(url => {
+                const domain = extractDomain(url);
+                excludeFlags.push(`--exclude "${domain}"`);
+            });
+
+            // Build command
+            let cmd = './scrape-history';
+
+            // Add original flags in a sensible order
+            if (args.days && args.days !== 7) cmd += ` --days ${args.days}`;
+            if (args.max_concurrent && args.max_concurrent !== 10) cmd += ` --max-concurrent ${args.max_concurrent}`;
+            if (args.max_urls && args.max_urls !== 1000) cmd += ` --max-urls ${args.max_urls}`;
+            if (args.max_cache_age && args.max_cache_age !== 24) cmd += ` --max-cache-age ${args.max_cache_age}`;
+            if (args.profile) cmd += ` --profile "${args.profile}"`;
+            if (args.cache_dir) cmd += ` --cache-dir "${args.cache_dir}"`;
+            if (args.output && args.output !== 'search_results.html') cmd += ` --output "${args.output}"`;
+            if (args.no_default_exclusions) cmd += ' --no-default-exclusions';
+
+            // Add original exclusions
+            if (args.exclude) {
+                args.exclude.forEach(pattern => {
+                    cmd += ` --exclude "${pattern}"`;
+                });
+            }
+
+            // Add original inclusions
+            if (args.include) {
+                args.include.forEach(pattern => {
+                    cmd += ` --include "${pattern}"`;
+                });
+            }
+
+            // Add new exclusions (deduplicated)
+            const allExclusions = new Set(args.exclude || []);
+            exclusionState.domains.forEach(domain => allExclusions.add(domain));
+            exclusionState.urls.forEach(url => allExclusions.add(extractDomain(url)));
+
+            Array.from(allExclusions).filter(excl => !((args.exclude || []).includes(excl))).forEach(excl => {
+                cmd += ` --exclude "${excl}"`;
+            });
+
+            // Add keywords at the end
+            if (keywords && keywords.length > 0) {
+                cmd += ` "${keywords.join('" "')}"`;
+            }
+
+            return cmd;
+        }
+
+        // Update command line display
+        function updateCommandLine() {
+            const cmd = generateCommandLine();
+            document.getElementById('command-output').textContent = cmd;
+        }
+
+        // Copy command to clipboard
+        function copyCommand() {
+            const cmd = document.getElementById('command-output').textContent;
+            navigator.clipboard.writeText(cmd).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 1000);
+            });
+        }
+
+        // Existing functions
         function highlightKeywords() {
             try {
-                const keywords = {{ keywords | tojson }};
                 const results = document.querySelectorAll('.match');
-                
+
                 results.forEach((result, index) => {
                     let html = result.innerHTML;
                     keywords.forEach(keyword => {
@@ -903,23 +1289,11 @@ class HTMLReportGenerator:
                 console.error('Error during keyword highlighting:', error);
             }
         }
-        
+
         function filterResults() {
-            const searchTerm = document.getElementById('search').value.toLowerCase();
-            const results = document.querySelectorAll('.result');
-            let visibleCount = 0;
-            
-            results.forEach(result => {
-                const text = result.textContent.toLowerCase();
-                const isVisible = text.includes(searchTerm);
-                result.style.display = isVisible ? 'block' : 'none';
-                if (isVisible) visibleCount++;
-            });
-            
-            // Update visible count
-            document.getElementById('visible-count').textContent = visibleCount;
+            updateDisplay();
         }
-        
+
         function toggleHighlighting() {
             const checkbox = document.getElementById('enable-highlighting');
             if (checkbox.checked) {
@@ -931,14 +1305,21 @@ class HTMLReportGenerator:
                 });
             }
         }
-        
+
         window.onload = function() {
             try {
-                // Set up highlighting toggle
+                // Load saved exclusions
+                loadExclusions();
+
+                // Set up event listeners
                 document.getElementById('enable-highlighting').addEventListener('change', toggleHighlighting);
-                
-                // Initial highlighting
+                document.getElementById('search').addEventListener('input', updateDisplay);
+                document.getElementById('show-excluded').addEventListener('change', updateDisplay);
+
+                // Initial setup
                 highlightKeywords();
+                updateDisplay();
+                updateCommandLine();
             } catch (error) {
                 console.error('Error during initialization:', error);
             }
@@ -947,13 +1328,13 @@ class HTMLReportGenerator:
 </head>
 <body>
     <h1>Firefox History Search Results</h1>
-    
+
     <div class="cache-stats">
-        <strong>Cache Status:</strong> 
-        {{ cache_stats.successful_entries }} pages cached ({{ "%.1f"|format(cache_stats.cache_size_mb) }} MB) | 
+        <strong>Cache Status:</strong>
+        {{ cache_stats.successful_entries }} pages cached ({{ "%.1f"|format(cache_stats.cache_size_mb) }} MB) |
         Cache covers {{ cache_stats.oldest_entry }} to {{ cache_stats.newest_entry }}
     </div>
-    
+
     <div class="summary">
         <strong>Search Summary:</strong><br>
         Keywords: {{ keywords | join(', ') }}<br>
@@ -963,21 +1344,38 @@ class HTMLReportGenerator:
         Failed scrapes: {{ failed_scrapes }}<br>
         From cache: {{ from_cache_count }} | Fresh scrapes: {{ fresh_scrape_count }}
     </div>
-    
+
+    <div class="exclusion-panel">
+        <h3>🚫 Exclusion Manager</h3>
+        <div id="exclusion-list"><em>No exclusions active</em></div>
+        <div style="margin-top: 10px;">
+            <button onclick="clearExclusions()" style="padding: 5px 10px; margin-right: 10px;">Clear All</button>
+            <strong>Next Command:</strong>
+            <div class="command-output" id="command-output">./scrape-history "{{ keywords | join('" "') }}"</div>
+            <button id="copy-btn" class="copy-btn" onclick="copyCommand()">Copy Command</button>
+        </div>
+    </div>
+
     <div class="search-box">
         <input type="text" id="search" placeholder="Filter results..." onkeyup="filterResults()">
         <button onclick="filterResults()">Filter</button>
         <label><input type="checkbox" id="enable-highlighting" checked> Enable keyword highlighting</label>
+        <label><input type="checkbox" id="show-excluded"> Show excluded results</label>
     </div>
-    
-    
+
+
     <div id="results-counter" style="margin-bottom: 10px; font-weight: bold;">
         Displaying <span id="visible-count">{{ results|length }}</span> of {{ results|length }} results
+        (<span id="excluded-count">0</span> excluded)
     </div>
-    
+
     {% for result in results %}
-    <div class="result">
+    <div class="result" data-url="{{ result.url }}">
         <div class="result-header">
+            <div class="exclusion-buttons">
+                <button class="exclude-btn" onclick="excludeDomain('{{ result.url | replace("'", "\\'") }}')">🚫 Domain</button>
+                <button class="exclude-btn" onclick="excludeURL('{{ result.url | replace("'", "\\'") }}')">❌ URL</button>
+            </div>
             <div class="result-title">
                 <a href="{{ result.url }}" target="_blank">{{ result.title or result.url }}</a>
                 {% if result.from_cache %}
@@ -992,7 +1390,7 @@ class HTMLReportGenerator:
                 Scraped: {{ result.get('scraped_at', 'Unknown') }}
             </div>
         </div>
-        
+
         {% if result.status == 'error' %}
         <div class="matches">
             <div class="error">Failed to scrape: {{ result.get('error', 'Unknown error') }}</div>
@@ -1013,139 +1411,217 @@ class HTMLReportGenerator:
         {% endif %}
     </div>
     {% endfor %}
-    
+
     <div class="meta">
         Generated on {{ generation_time.strftime('%Y-%m-%d %H:%M:%S') }}
     </div>
 </body>
 </html>
     """
-    
-    def generate_report(self, results: List[Dict], keywords: List[str], days: int = None, cache_stats: Dict = None) -> str:
+
+    def generate_report(
+        self,
+        results: List[Dict],
+        keywords: List[str],
+        args=None,
+        cache_stats: Dict = None,
+    ) -> str:
         """Generate HTML report from search results."""
         template = Template(self.HTML_TEMPLATE)
-        
-        successful_matches = sum(1 for r in results if r.get('matches'))
-        failed_scrapes = sum(1 for r in results if r['status'] == 'error')
-        from_cache_count = sum(1 for r in results if r.get('from_cache', False))
+
+        successful_matches = sum(1 for r in results if r.get("matches"))
+        failed_scrapes = sum(1 for r in results if r["status"] == "error")
+        from_cache_count = sum(1 for r in results if r.get("from_cache", False))
         fresh_scrape_count = len(results) - from_cache_count
-        
+
+        # Convert args to dict for JavaScript, handling special cases
+        args_dict = {}
+        if args:
+            # Convert argparse Namespace to dict, filtering out None values and internal attributes
+            for key, value in vars(args).items():
+                if not key.startswith("_") and value is not None:
+                    # Handle Path objects by converting to string
+                    if hasattr(value, "__fspath__"):
+                        args_dict[key] = str(value)
+                    else:
+                        args_dict[key] = value
+
         return template.render(
             results=results,
             keywords=keywords,
-            days=days,
+            days=args.days if args else None,
             total_urls=len(results),
             successful_matches=successful_matches,
             failed_scrapes=failed_scrapes,
             from_cache_count=from_cache_count,
             fresh_scrape_count=fresh_scrape_count,
             cache_stats=cache_stats or {},
-            generation_time=datetime.now()
+            generation_time=datetime.now(),
+            original_args=args_dict,
         )
 
 
-async def scrape_and_cache_urls(urls: List[Dict], cache: ContentCache, 
-                              force_refresh: bool = False, max_cache_age_hours: int = 24, max_concurrent: int = 10) -> List[Dict]:
+async def scrape_and_cache_urls(
+    urls: List[Dict],
+    cache: ContentCache,
+    force_refresh: bool = False,
+    max_cache_age_hours: int = 24,
+    max_concurrent: int = 10,
+) -> List[Dict]:
     """Scrape URLs using cache when possible."""
     if not urls:
         return []
-        
+
     scraper = AsyncWebScraper(cache, max_concurrent)
     results = []
-    
+
     cached_count = 0
     error_count = 0
     success_count = 0
-    
+
     # Create all scraping tasks at once for parallel execution
     async def scrape_with_data(url_data):
         """Helper to scrape URL and return both result and original data."""
-        url = url_data['url']
+        url = url_data["url"]
         use_cache = not force_refresh
         scraped = await scraper.scrape_url(url, use_cache, max_cache_age_hours)
         return url_data, scraped
-    
+
     # Create tasks for all URLs
     tasks = [asyncio.create_task(scrape_with_data(url_data)) for url_data in urls]
-    
+
     # Process completed tasks as they finish (up to max_concurrent at a time)
     with tqdm(total=len(urls), desc="Scraping URLs", unit="url") as pbar:
         for task in asyncio.as_completed(tasks):
             url_data, scraped = await task
-            
-            if scraped.get('from_cache'):
+
+            if scraped.get("from_cache"):
                 cached_count += 1
                 success_count += 1
                 status = "cached"
-            elif scraped['status'] == 'error':
+            elif scraped["status"] == "error":
                 error_count += 1
                 status = "error"
             else:
                 success_count += 1
                 status = "fresh"
-            
+
             # Update progress bar with current stats
-            pbar.set_postfix({
-                'cached': cached_count,
-                'fresh': success_count - cached_count, 
-                'errors': error_count
-            })
+            pbar.set_postfix(
+                {
+                    "cached": cached_count,
+                    "fresh": success_count - cached_count,
+                    "errors": error_count,
+                }
+            )
             pbar.update(1)
-            
+
             # Add results
-            results.append({
-                **url_data,
-                **scraped
-            })
-    
+            results.append({**url_data, **scraped})
+
     await scraper.close()
-    
-    print(f"Scraping summary: {success_count}/{len(urls)} successful, {cached_count} from cache, {error_count} failed")
+
+    print(
+        f"Scraping summary: {success_count}/{len(urls)} successful, {cached_count} from cache, {error_count} failed"
+    )
     return results
 
 
 async def main():
     """Main application logic."""
-    parser = argparse.ArgumentParser(description='Firefox history scraper with caching')
-    
+    parser = argparse.ArgumentParser(description="Firefox history scraper with caching")
+
     # Common arguments
-    parser.add_argument('keywords', nargs='*', help='Keywords to search for (required for search operations)')
-    parser.add_argument('--days', type=int, default=7, help='Number of days to look back')
-    parser.add_argument('--exclude', action='append', default=[], help='URL patterns to exclude (in addition to defaults)')
-    parser.add_argument('--include', action='append', default=[], help='URL patterns to include (override exclusions)')
-    parser.add_argument('--no-default-exclusions', action='store_true', help='Disable default exclusion patterns')
-    parser.add_argument('--show-exclusions', action='store_true', help='Show active exclusion patterns and exit')
-    parser.add_argument('--output', default='search_results.html', help='Output HTML file')
-    parser.add_argument('--max-urls', type=int, default=1000, help='Maximum fresh URLs to scrape (cached URLs do not count, 0 for unlimited)')
-    parser.add_argument('--max-concurrent', type=int, default=10, help='Maximum concurrent HTTP requests (default: 10, try 20-30 for faster scraping)')
-    parser.add_argument('--cache-dir', type=Path, help='Cache directory path')
-    parser.add_argument('--max-cache-age', type=int, default=24, help='Max cache age in hours')
-    parser.add_argument('--profile', help='Firefox profile pattern (supports glob: "*", "default*", "work*")')
-    
+    parser.add_argument(
+        "keywords",
+        nargs="*",
+        help="Keywords to search for (required for search operations)",
+    )
+    parser.add_argument(
+        "--days", type=int, default=7, help="Number of days to look back"
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="URL patterns to exclude (in addition to defaults)",
+    )
+    parser.add_argument(
+        "--include",
+        action="append",
+        default=[],
+        help="URL patterns to include (override exclusions)",
+    )
+    parser.add_argument(
+        "--no-default-exclusions",
+        action="store_true",
+        help="Disable default exclusion patterns",
+    )
+    parser.add_argument(
+        "--show-exclusions",
+        action="store_true",
+        help="Show active exclusion patterns and exit",
+    )
+    parser.add_argument(
+        "--output", default="search_results.html", help="Output HTML file"
+    )
+    parser.add_argument(
+        "--max-urls",
+        type=int,
+        default=1000,
+        help="Maximum fresh URLs to scrape (cached URLs do not count, 0 for unlimited)",
+    )
+    parser.add_argument(
+        "--max-concurrent",
+        type=int,
+        default=10,
+        help="Maximum concurrent HTTP requests (default: 10, try 20-30 for faster scraping)",
+    )
+    parser.add_argument("--cache-dir", type=Path, help="Cache directory path")
+    parser.add_argument(
+        "--max-cache-age", type=int, default=24, help="Max cache age in hours"
+    )
+    parser.add_argument(
+        "--profile",
+        help='Firefox profile pattern (supports glob: "*", "default*", "work*")',
+    )
+
     # Operation modes (mutually exclusive)
     mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument('--list-profiles', action='store_true', 
-                           help='List available Firefox profiles with pattern examples')
-    mode_group.add_argument('--cache-stats', action='store_true', 
-                           help='Show cache statistics')
-    mode_group.add_argument('--clean-cache', type=int, metavar='DAYS', 
-                           help='Remove cache entries older than DAYS')
-    mode_group.add_argument('--search-cache', action='store_true', 
-                           help='Search only cached content')
-    mode_group.add_argument('--refresh-cache', action='store_true', 
-                           help='Force refresh of all URLs and search')
-    
+    mode_group.add_argument(
+        "--list-profiles",
+        action="store_true",
+        help="List available Firefox profiles with pattern examples",
+    )
+    mode_group.add_argument(
+        "--cache-stats", action="store_true", help="Show cache statistics"
+    )
+    mode_group.add_argument(
+        "--clean-cache",
+        type=int,
+        metavar="DAYS",
+        help="Remove cache entries older than DAYS",
+    )
+    mode_group.add_argument(
+        "--search-cache", action="store_true", help="Search only cached content"
+    )
+    mode_group.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Force refresh of all URLs and search",
+    )
+
     args = parser.parse_args()
-    
+
     # Handle show exclusions (no other setup needed)
     if args.show_exclusions:
         print("Active Filtering Patterns:")
-        
+
         if args.include:
             print("\nInclude Patterns (override exclusions):")
             for pattern in args.include:
                 print(f"  + {pattern}")
-        
+
         if not args.no_default_exclusions:
             print("\nDefault Domain Exclusions:")
             for pattern in DEFAULT_DOMAIN_EXCLUSIONS:
@@ -1153,17 +1629,17 @@ async def main():
             print("\nDefault File Extension Exclusions:")
             for pattern in DEFAULT_FILE_EXTENSION_EXCLUSIONS:
                 print(f"  - {pattern}")
-        
+
         if args.exclude:
             print("\nCustom Exclusions:")
             for pattern in args.exclude:
                 print(f"  - {pattern}")
-        
+
         if args.no_default_exclusions and not args.exclude and not args.include:
             print("  - No filtering patterns active")
-        
+
         return
-    
+
     # Handle profile listing (no cache or keywords needed)
     if args.list_profiles:
         extractor = FirefoxHistoryExtractor()
@@ -1171,23 +1647,23 @@ async def main():
             profiles = extractor.list_profiles()
             print("Available Firefox Profiles:")
             for profile in profiles:
-                default_indicator = " (default)" if profile['is_default'] else ""
+                default_indicator = " (default)" if profile["is_default"] else ""
                 print(f"  - {profile['name']}{default_indicator}")
                 print(f"    Directory: {profile['directory']}")
-            
+
             print("\nProfile Pattern Examples:")
             print("  --profile '*'         # Use any available profile (default)")
             print("  --profile 'default*'  # Use any profile starting with 'default'")
-            if any('work' in p['name'].lower() for p in profiles):
+            if any("work" in p["name"].lower() for p in profiles):
                 print("  --profile 'work*'     # Use any profile starting with 'work'")
             print("  --profile 'exact-name' # Use profile with exact directory name")
         except FileNotFoundError as e:
             print(f"Error: {e}")
         return
-    
+
     # Initialize cache for all other operations
     cache = ContentCache(args.cache_dir)
-    
+
     # Handle cache management commands
     if args.cache_stats:
         stats = cache.get_cache_stats()
@@ -1196,45 +1672,57 @@ async def main():
         print(f"  - Total entries: {stats['total_entries']}")
         print(f"  - Successful entries: {stats['successful_entries']}")
         print(f"  - Cache size: {stats['cache_size_mb']:.1f} MB")
-        if stats['oldest_entry']:
-            print(f"  - Date range: {stats['oldest_entry'][:10]} to {stats['newest_entry'][:10]}")
+        if stats["oldest_entry"]:
+            print(
+                f"  - Date range: {stats['oldest_entry'][:10]} to {stats['newest_entry'][:10]}"
+            )
         return
-    
+
     if args.clean_cache:
         deleted = cache.clean_old_entries(args.clean_cache)
         print(f"Cleaned {deleted} old cache entries from {cache.cache_dir}")
         return
-    
+
     # For all search operations, keywords are required
     if not args.keywords:
         print("Error: Keywords required for search operations")
         print("Available operations: --list-profiles, --cache-stats, --clean-cache")
         return
-    
-    # Initialize extractor for search operations  
+
+    # Initialize extractor for search operations
     extractor = FirefoxHistoryExtractor()
-    
+
     # Prepare exclusion and inclusion patterns
     use_defaults = not args.no_default_exclusions
     patterns = get_effective_patterns(args.exclude, args.include, use_defaults)
-    
+
     # Check for potentially problematic include patterns and warn
-    check_include_warnings(args.include, patterns['exclusions'])
-    
+    check_include_warnings(args.include, patterns["exclusions"])
+
     # Show pattern info
-    exclusions = patterns['exclusions']
-    inclusions = patterns['inclusions']
-    total_exclusions = len(exclusions['domains']) + len(exclusions['extensions']) + len(exclusions['general'])
-    total_inclusions = len(inclusions['domains']) + len(inclusions['extensions']) + len(inclusions['general'])
-    
+    exclusions = patterns["exclusions"]
+    inclusions = patterns["inclusions"]
+    total_exclusions = (
+        len(exclusions["domains"])
+        + len(exclusions["extensions"])
+        + len(exclusions["general"])
+    )
+    total_inclusions = (
+        len(inclusions["domains"])
+        + len(inclusions["extensions"])
+        + len(inclusions["general"])
+    )
+
     if total_exclusions > 0 or total_inclusions > 0:
         parts = []
         if total_exclusions > 0:
-            parts.append(f"{total_exclusions} exclusions ({len(exclusions['domains'])} domains, {len(exclusions['extensions'])} extensions, {len(exclusions['general'])} custom)")
+            parts.append(
+                f"{total_exclusions} exclusions ({len(exclusions['domains'])} domains, {len(exclusions['extensions'])} extensions, {len(exclusions['general'])} custom)"
+            )
         if total_inclusions > 0:
             parts.append(f"{total_inclusions} inclusions")
         print(f"Using {', '.join(parts)}")
-    
+
     # Show profile being used (resolve pattern first)
     try:
         if args.profile:
@@ -1244,41 +1732,45 @@ async def main():
             print(f"Using Firefox profile: {profile_dir}")
         else:
             profiles = extractor.list_profiles()
-            default_profile = next((p for p in profiles if p['is_default']), profiles[0])
+            default_profile = next(
+                (p for p in profiles if p["is_default"]), profiles[0]
+            )
             print(f"Using Firefox profile: {default_profile['name']}")
     except Exception as e:
         # If we can't resolve now, we'll get a better error later during extraction
         print(f"Using Firefox profile: {args.profile or 'default'}")
-    
+
     # Handle search operations
     if args.search_cache:
         print(f"Searching cached content for: {', '.join(args.keywords)}")
         results = cache.search_cached_content(args.keywords, patterns, args.profile)
         print(f"Found {len(results)} results in cache")
-        
-        # Deduplicate cache results by URL  
+
+        # Deduplicate cache results by URL
         results = deduplicate_results_by_url(results)
-        
+
     else:
         # Regular operation (default) or refresh cache mode
         force_refresh = args.refresh_cache
         operation_type = "refresh and search" if force_refresh else "search"
-        print(f"Extracting URLs from Firefox history for {operation_type} (last {args.days} days)...")
-        
+        print(
+            f"Extracting URLs from Firefox history for {operation_type} (last {args.days} days)..."
+        )
+
         try:
             urls = extractor.extract_urls(args.days, patterns, args.profile)
             print(f"Found {len(urls)} URLs")
-            
+
             # Apply max_urls limit only to fresh URLs (cached URLs don't count)
             if args.max_urls > 0:
                 filtered_urls = []
                 fresh_count = 0
                 cached_count = 0
-                
+
                 for url_data in urls:
-                    url = url_data['url']
+                    url = url_data["url"]
                     use_cache = not force_refresh
-                    
+
                     # Check if URL is in cache and fresh enough
                     if use_cache and cache.get_cached_content(url, args.max_cache_age):
                         # Cached URL - always include, doesn't count toward limit
@@ -1290,15 +1782,19 @@ async def main():
                             filtered_urls.append(url_data)
                             fresh_count += 1
                         # else: skip this URL because we've hit the fresh URL limit
-                
+
                 if fresh_count >= args.max_urls and len(urls) > len(filtered_urls):
                     skipped = len(urls) - len(filtered_urls)
-                    print(f"Limited to {args.max_urls} fresh URLs (keeping {cached_count} cached, skipping {skipped})")
+                    print(
+                        f"Limited to {args.max_urls} fresh URLs (keeping {cached_count} cached, skipping {skipped})"
+                    )
                 elif cached_count > 0:
-                    print(f"Processing {fresh_count} fresh + {cached_count} cached URLs")
-                
+                    print(
+                        f"Processing {fresh_count} fresh + {cached_count} cached URLs"
+                    )
+
                 urls = filtered_urls
-            
+
         except FileNotFoundError as e:
             print(f"Error: {e}")
             print("Try --list-profiles to see available profiles")
@@ -1307,50 +1803,54 @@ async def main():
             print(f"Error: {e}")
             print("Use --list-profiles to see available profiles")
             return
-        
+
         # Scrape URLs
         cache_mode = "Force refreshing" if force_refresh else "Processing"
         print(f"\n{cache_mode} {len(urls)} URLs...")
-        
+
         scraped_results = await scrape_and_cache_urls(
             urls, cache, force_refresh, args.max_cache_age, args.max_concurrent
         )
-        
+
         # Search for keywords in scraped content
         print(f"\nSearching for keywords: {', '.join(args.keywords)}")
         keyword_searcher = KeywordSearcher()
-        
+
         results = []
-        successful_content = [r for r in scraped_results if r['status'] == 'success' and r['content']]
-        
+        successful_content = [
+            r for r in scraped_results if r["status"] == "success" and r["content"]
+        ]
+
         with tqdm(successful_content, desc="Searching content", unit="page") as pbar:
             matches_found = 0
             for result in pbar:
-                matches = keyword_searcher.search_content(result['content'], args.keywords)
+                matches = keyword_searcher.search_content(
+                    result["content"], args.keywords
+                )
                 if matches:  # Only include results with matches
-                    result['matches'] = matches
+                    result["matches"] = matches
                     results.append(result)
                     matches_found += 1
-                
-                pbar.set_postfix({'matches': matches_found})
-    
+
+                pbar.set_postfix({"matches": matches_found})
+
     # Deduplicate results by URL, keeping most recent visit date
     results = deduplicate_results_by_url(results)
-    
+
     # Generate HTML report for search operations
     print(f"\nGenerating HTML report...")
-    
+
     generator = HTMLReportGenerator()
     cache_stats = cache.get_cache_stats()
-    html_content = generator.generate_report(results, args.keywords, args.days, cache_stats)
-    
+    html_content = generator.generate_report(results, args.keywords, args, cache_stats)
+
     # Write report
-    async with aiofiles.open(args.output, 'w', encoding='utf-8') as f:
+    async with aiofiles.open(args.output, "w", encoding="utf-8") as f:
         await f.write(html_content)
-    
+
     # Summary
-    matches_found = sum(len(r['matches']) for r in results)
-    
+    matches_found = sum(len(r["matches"]) for r in results)
+
     print(f"\nComplete!")
     print(f"Summary:")
     print(f"  - {matches_found} keyword matches found")
