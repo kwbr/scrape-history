@@ -332,6 +332,15 @@ def should_exclude_url(url: str, patterns: Dict[str, Dict[str, List[str]]]) -> b
         if pattern.lower() in url_lower:
             return True
 
+    # If inclusions are specified, exclude URLs that don't match any inclusion pattern
+    has_inclusions = (
+        len(inclusions["domains"]) > 0
+        or len(inclusions["extensions"]) > 0
+        or len(inclusions["general"]) > 0
+    )
+    if has_inclusions:
+        return True
+
     return False
 
 
